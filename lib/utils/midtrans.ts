@@ -29,7 +29,7 @@ export const getSnapToken = async (params: SnapTransactionParams) => {
                 gross_amount: params.gross_amount,
             },
             customer_details: params.customer_details,
-            enabled_payments: ['gopay', 'shopeepay', 'qris', 'bank_transfer', 'echannel'], // E-Wallets + QRIS + VA
+            enabled_payments: params.parameter?.enabled_payments || ['gopay', 'shopeepay', 'qris', 'bank_transfer', 'echannel'],
             credit_card: {
                 secure: true
             }

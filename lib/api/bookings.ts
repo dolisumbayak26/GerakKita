@@ -8,21 +8,63 @@ export interface CreateBookingParams {
     amount: number;
     paymentMethod: string;
     quantity?: number;
+    userEmail: string;
+    userName: string;
 }
 
 import { getSnapToken } from '../utils/midtrans';
 
-export interface CreateBookingParams {
-    userId: string;
-    routeId: string;
-    originStopId: string;
-    destinationStopId: string;
-    amount: number;
-    paymentMethod: string;
-    quantity?: number;
-    userEmail: string; // Added for Midtrans
-    userName: string; // Added for Midtrans
+export interface UpdateTransactionParams {
+    transactionId: string; // Actually using order_id/transaction_code for lookup
+    status: 'completed' | 'failed' | 'pending';
 }
+
+export const updateTransactionStatus = async (orderId: string, status: 'completed' | 'failed') => {
+    // 1. Update Transaction
+    const { data: transaction, error: txnError } = await supabase
+        .from('transactions')
+        .update({
+            payment_status: status,
+            midtrans_transaction_id: orderId // Storing orderId here for ref if needed
+        })
+        .eq('midtrans_order_id', orderId)
+        .select()
+        .single();
+
+    if (txnError) throw txnError;
+
+    // 2. If Completed, Ensure Ticket Exists and is Active
+    if (status === 'completed' && transaction) {
+        // Check if ticket exists
+        const { data: existingTicket } = await supabase
+            .from('tickets')
+            .select('*')
+            .eq('transaction_id', transaction.id)
+            .single();
+
+        if (existingTicket) {
+            // Update status to active if needed
+            if (existingTicket.status !== 'active') {
+                await supabase
+                    .from('tickets')
+                    .update({ status: 'active' })
+                    .eq('id', existingTicket.id);
+            }
+        } else {
+            // Create Ticket if missing (should be created in createBooking but just in case)
+            await supabase
+                .from('tickets')
+                .insert({
+                    transaction_id: transaction.id,
+                    valid_until: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+                    status: 'active',
+                    qr_code_data: `QR-${orderId}-${Math.floor(Math.random() * 1000)}`
+                });
+        }
+    }
+
+    return transaction;
+};
 
 export const createBooking = async (params: CreateBookingParams) => {
     const transactionCode = `TXN-${Date.now()}`;
@@ -50,6 +92,13 @@ export const createBooking = async (params: CreateBookingParams) => {
 
     // 2. Get Snap Token
     let snapData;
+    let enabledPayments = ['gopay', 'shopeepay', 'qris', 'bank_transfer'];
+
+    // Map selection to specific Snap payment method to skip selection screen if desired
+    if (params.paymentMethod === 'gopay') enabledPayments = ['gopay'];
+    if (params.paymentMethod === 'shopeepay') enabledPayments = ['shopeepay'];
+    if (params.paymentMethod === 'qris') enabledPayments = ['qris'];
+
     try {
         snapData = await getSnapToken({
             order_id: transactionCode,
@@ -57,6 +106,9 @@ export const createBooking = async (params: CreateBookingParams) => {
             customer_details: {
                 first_name: params.userName,
                 email: params.userEmail
+            },
+            parameter: {
+                enabled_payments: enabledPayments
             }
         });
 
@@ -83,7 +135,8 @@ export const createBooking = async (params: CreateBookingParams) => {
         .insert({
             transaction_id: transaction.id,
             valid_until: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-            status: 'active' // Pre-create as active for smoother demo, or 'pending' if schema supported it
+            status: 'active',
+            qr_code_data: `QR-${transactionCode}-${Math.floor(Math.random() * 1000)}` // Generate simple unique QR data
         })
         .select()
         .single();

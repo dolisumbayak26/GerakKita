@@ -35,6 +35,7 @@ export default function BookingConfirmScreen() {
 
     const [originId, setOriginId] = useState<string | null>(null);
     const [destinationId, setDestinationId] = useState<string | null>(null);
+    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('qris');
 
     // Fixed price for MVP
     const PRICE = 3500;
@@ -76,7 +77,7 @@ export default function BookingConfirmScreen() {
                 originStopId: originId,
                 destinationStopId: destinationId,
                 amount: PRICE,
-                paymentMethod: 'gopay', // Will be overridden by Snap selection
+                paymentMethod: selectedPaymentMethod,
                 userEmail: user.email || 'customer@example.com',
                 userName: user.full_name || 'Customer'
             });
@@ -84,7 +85,10 @@ export default function BookingConfirmScreen() {
             if (result.redirect_url) {
                 router.push({
                     pathname: '/booking/payment',
-                    params: { url: result.redirect_url }
+                    params: {
+                        url: result.redirect_url,
+                        orderId: result.transaction.midtrans_order_id
+                    }
                 });
             } else {
                 Alert.alert('Sukses', 'Tiket berhasil dibeli!', [
@@ -161,6 +165,48 @@ export default function BookingConfirmScreen() {
                             </View>
                         </View>
                     </View>
+                </View>
+
+                {/* Payment Method Selection */}
+                <View style={styles.section}>
+                    <Text style={[styles.sectionTitle, { color: theme.text }]}>Metode Pembayaran</Text>
+
+                    {[
+                        { id: 'qris', name: 'QRIS', icon: 'qr-code', color: theme.text },
+                        { id: 'gopay', name: 'GoPay', icon: 'wallet', color: '#00AED6' }, // Gojek Blue
+                        { id: 'shopeepay', name: 'ShopeePay', icon: 'cart', color: '#EE4D2D' } // Shopee Orange
+                    ].map((method) => (
+                        <TouchableOpacity
+                            key={method.id}
+                            style={[
+                                styles.paymentOption,
+                                {
+                                    borderColor: selectedPaymentMethod === method.id ? theme.primary : theme.border,
+                                    backgroundColor: selectedPaymentMethod === method.id ? theme.primary + '10' : 'transparent'
+                                }
+                            ]}
+                            onPress={() => setSelectedPaymentMethod(method.id)}
+                        >
+                            <View style={styles.paymentOptionContent}>
+                                <View style={[styles.paymentIconContainer, { backgroundColor: theme.background }]}>
+                                    <View>
+                                        {/* Using generic icons for MVP since we don't have assets yet */}
+                                        <Ionicons name={method.icon as any} size={24} color={method.color} />
+                                    </View>
+                                </View>
+                                <Text style={[styles.paymentOptionText, { color: theme.text }]}>{method.name}</Text>
+                            </View>
+
+                            <View style={[
+                                styles.radioButton,
+                                { borderColor: selectedPaymentMethod === method.id ? theme.primary : theme.textSecondary }
+                            ]}>
+                                {selectedPaymentMethod === method.id && (
+                                    <View style={[styles.radioInner, { backgroundColor: theme.primary }]} />
+                                )}
+                            </View>
+                        </TouchableOpacity>
+                    ))}
                 </View>
 
                 {/* Payment Summary */}
@@ -348,5 +394,45 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontSize: FONT_SIZE.md,
         fontWeight: 'bold',
+    },
+    paymentOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: SPACING.md,
+        borderWidth: 1,
+        borderRadius: BORDER_RADIUS.md,
+        marginBottom: SPACING.sm,
+    },
+    paymentOptionContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: SPACING.md,
+    },
+    paymentIconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: BORDER_RADIUS.md,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#EEE',
+    },
+    paymentOptionText: {
+        fontSize: FONT_SIZE.md,
+        fontWeight: '500',
+    },
+    radioButton: {
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        borderWidth: 2,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    radioInner: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
     },
 });
