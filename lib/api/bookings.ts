@@ -120,32 +120,29 @@ export const createBooking = async (params: CreateBookingParams) => {
         throw error;
     }
 
-    // 3. Create Ticket (Inactive/Pending) 
-    // Note: In a real app, tickets might be created only after payment webhook success. 
-    // But for this flow we can create them as 'cancelled' or similar, or just create them and set status 'active' later.
-    // However, the RLS policy issue was blocking this step.
-    // Assuming RLS is fixed, we create the ticket now.
+    // 3. Create Tickets based on quantity
+    // Create a ticket for each quantity requested
+    const quantity = params.quantity || 1;
+    const ticketsToCreate = [];
 
-    // For now, let's create the ticket as 'active' assuming payment will succeed in demo,
-    // OR create as 'cancelled' and update to 'active' on success.
-    // But simplistic approach: Create ticket now.
-
-    const { data: ticket, error: ticketError } = await supabase
-        .from('tickets')
-        .insert({
+    for (let i = 0; i < quantity; i++) {
+        ticketsToCreate.push({
             transaction_id: transaction.id,
             valid_until: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
             status: 'active',
-            qr_code_data: `QR-${transactionCode}-${Math.floor(Math.random() * 1000)}` // Generate simple unique QR data
-        })
-        .select()
-        .single();
+            qr_code_data: `QR-${transactionCode}-${i + 1}-${Math.floor(Math.random() * 10000)}` // Unique QR for each ticket
+        });
+    }
+
+    const { data: tickets, error: ticketError } = await supabase
+        .from('tickets')
+        .insert(ticketsToCreate)
+        .select();
 
     if (ticketError) {
         console.error('Ticket creation failed:', ticketError);
-        // Important: If ticket creation fails (e.g. RLS), we should probably fail the whole booking
         throw ticketError;
     }
 
-    return { transaction, ticket, redirect_url: snapData.redirect_url, token: snapData.token };
+    return { transaction, tickets, redirect_url: snapData.redirect_url, token: snapData.token };
 };

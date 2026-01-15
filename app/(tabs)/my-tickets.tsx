@@ -170,7 +170,7 @@ export default function TicketsScreen() {
                             </Text>
                             <TouchableOpacity
                                 style={[styles.buyButton, { backgroundColor: theme.primary }]}
-                                onPress={() => router.push('/routes' as any)}
+                                onPress={() => router.push('/(tabs)/buy-ticket')}
                             >
                                 <Text style={styles.buyButtonText}>Beli Tiket Sekarang</Text>
                             </TouchableOpacity>

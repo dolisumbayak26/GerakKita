@@ -5,6 +5,7 @@ import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -33,6 +34,27 @@ export default function TabLayout() {
         options={{
           title: 'Explore',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="buy-ticket"
+        options={{
+          title: 'Beli Tiket',
+          tabBarIcon: ({ color }) => <Ionicons size={26} name="ticket" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="my-tickets"
+        options={{
+          title: 'Tiket Saya',
+          tabBarIcon: ({ color }) => <Ionicons size={26} name="ticket-outline" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color }) => <Ionicons size={26} name="person-circle-outline" color={color} />,
         }}
       />
     </Tabs>

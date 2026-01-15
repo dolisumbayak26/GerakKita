@@ -110,8 +110,8 @@ export default function HomeScreen() {
             </View>
           </View>
           <TouchableOpacity onPress={() => router.push('/(tabs)/profile')}>
-            <View style={[styles.avatarPlaceholder, { backgroundColor: theme.primary + '20', borderColor: theme.primary + '50' }]}>
-              <Text style={[styles.avatarText, { color: theme.primary }]}>
+            <View style={[styles.avatarPlaceholder, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <Text style={[styles.avatarText, { color: theme.text }]}>
                 {user?.full_name?.charAt(0).toUpperCase() || 'U'}
               </Text>
             </View>

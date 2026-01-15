@@ -36,9 +36,12 @@ export default function BookingConfirmScreen() {
     const [originId, setOriginId] = useState<string | null>(null);
     const [destinationId, setDestinationId] = useState<string | null>(null);
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('qris');
+    const [quantity, setQuantity] = useState<number>(1);
 
     // Fixed price for MVP
-    const PRICE = 3500;
+    const UNIT_PRICE = 3500;
+    const totalPrice = UNIT_PRICE * quantity;
+    const MAX_QUANTITY = 10;
 
     useEffect(() => {
         if (routeId) {
@@ -76,7 +79,8 @@ export default function BookingConfirmScreen() {
                 routeId: routeId,
                 originStopId: originId,
                 destinationStopId: destinationId,
-                amount: PRICE,
+                amount: totalPrice,
+                quantity: quantity,
                 paymentMethod: selectedPaymentMethod,
                 userEmail: user.email || 'customer@example.com',
                 userName: user.full_name || 'Customer'
@@ -209,18 +213,52 @@ export default function BookingConfirmScreen() {
                     ))}
                 </View>
 
+                {/* Quantity Selector */}
+                <View style={styles.section}>
+                    <Text style={[styles.sectionTitle, { color: theme.text }]}>Jumlah Tiket</Text>
+                    <Card style={styles.quantityCard}>
+                        <View style={styles.quantityRow}>
+                            <TouchableOpacity
+                                onPress={() => setQuantity(q => Math.max(1, q - 1))}
+                                style={[styles.quantityButton, { backgroundColor: theme.border }]}
+                                disabled={quantity <= 1}
+                            >
+                                <Ionicons name="remove" size={24} color={quantity <= 1 ? theme.textSecondary : theme.text} />
+                            </TouchableOpacity>
+                            <View style={styles.quantityDisplay}>
+                                <Text style={[styles.quantityValue, { color: theme.text }]}>{quantity}</Text>
+                                <Text style={[styles.quantityLabel, { color: theme.textSecondary }]}>tiket</Text>
+                            </View>
+                            <TouchableOpacity
+                                onPress={() => setQuantity(q => Math.min(MAX_QUANTITY, q + 1))}
+                                style={[styles.quantityButton, { backgroundColor: theme.primary + '20' }]}
+                                disabled={quantity >= MAX_QUANTITY}
+                            >
+                                <Ionicons name="add" size={24} color={quantity >= MAX_QUANTITY ? theme.textSecondary : theme.primary} />
+                            </TouchableOpacity>
+                        </View>
+                        <Text style={[styles.quantityHint, { color: theme.textSecondary }]}>
+                            Maksimal {MAX_QUANTITY} tiket per transaksi
+                        </Text>
+                    </Card>
+                </View>
+
                 {/* Payment Summary */}
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: theme.text }]}>Rincian Pembayaran</Text>
                     <Card style={styles.summaryCard}>
                         <View style={styles.summaryRow}>
-                            <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Harga Tiket</Text>
-                            <Text style={[styles.summaryValue, { color: theme.text }]}>Rp {PRICE.toLocaleString('id-ID')}</Text>
+                            <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Harga per Tiket</Text>
+                            <Text style={[styles.summaryValue, { color: theme.text }]}>Rp {UNIT_PRICE.toLocaleString('id-ID')}</Text>
+                        </View>
+                        <View style={styles.summaryRow}>
+                            <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Jumlah Tiket</Text>
+                            <Text style={[styles.summaryValue, { color: theme.text }]}>{quantity}x</Text>
                         </View>
                         <View style={[styles.divider, { backgroundColor: theme.border }]} />
                         <View style={styles.summaryRow}>
                             <Text style={[styles.totalLabel, { color: theme.text }]}>Total Bayar</Text>
-                            <Text style={[styles.totalValue, { color: theme.primary }]}>Rp {PRICE.toLocaleString('id-ID')}</Text>
+                            <Text style={[styles.totalValue, { color: theme.primary }]}>Rp {totalPrice.toLocaleString('id-ID')}</Text>
                         </View>
                     </Card>
                 </View>
@@ -229,8 +267,8 @@ export default function BookingConfirmScreen() {
             {/* Bottom Action */}
             <View style={[styles.footer, { borderTopColor: theme.border, backgroundColor: theme.background }]}>
                 <View>
-                    <Text style={[styles.footerLabel, { color: theme.textSecondary }]}>Total</Text>
-                    <Text style={[styles.footerPrice, { color: theme.primary }]}>Rp {PRICE.toLocaleString('id-ID')}</Text>
+                    <Text style={[styles.footerLabel, { color: theme.textSecondary }]}>Total ({quantity} tiket)</Text>
+                    <Text style={[styles.footerPrice, { color: theme.primary }]}>Rp {totalPrice.toLocaleString('id-ID')}</Text>
                 </View>
                 <TouchableOpacity
                     style={[styles.payButton, { backgroundColor: theme.primary, opacity: submitting ? 0.7 : 1 }]}
@@ -434,5 +472,37 @@ const styles = StyleSheet.create({
         width: 10,
         height: 10,
         borderRadius: 5,
+    },
+    quantityCard: {
+        padding: SPACING.md,
+    },
+    quantityRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: SPACING.xl,
+    },
+    quantityButton: {
+        width: 48,
+        height: 48,
+        borderRadius: BORDER_RADIUS.full,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    quantityDisplay: {
+        alignItems: 'center',
+        minWidth: 60,
+    },
+    quantityValue: {
+        fontSize: FONT_SIZE.xxl,
+        fontWeight: 'bold',
+    },
+    quantityLabel: {
+        fontSize: FONT_SIZE.sm,
+    },
+    quantityHint: {
+        fontSize: FONT_SIZE.xs,
+        textAlign: 'center',
+        marginTop: SPACING.md,
     },
 });
