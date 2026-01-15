@@ -43,9 +43,9 @@ INSERT INTO public.route_stops (route_id, bus_stop_id, stop_order, fare_from_ori
 
 -- 4. Insert Buses
 INSERT INTO public.buses ("id", "bus_number", "route_id", "total_seats", "available_seats", "status", "current_latitude", "current_longitude", "last_location_update", "created_at", "updated_at") VALUES 
-('b0b0b0b0-b0b0-b0b0-b0b0-b0b0b0b0b0b1', 'BK 1001 AA', '10101010-1010-1010-1010-101010101010', '40', '40', 'available', null, null, null, '2026-01-15 09:57:23', '2026-01-15 09:57:23'), 
-('b0b0b0b0-b0b0-b0b0-b0b0-b0b0b0b0b0b2', 'BK 2002 BB', '20202020-2020-2020-2020-202020202020', '40', '40', 'available', null, null, null, '2026-01-15 09:57:23', '2026-01-15 09:57:23'), 
-('b0b0b0b0-b0b0-b0b0-b0b0-b0b0b0b0b0b3', 'BK 3003 CC', '30303030-3030-3030-3030-303030303030', '40', '40', 'maintenance', null, null, null, '2026-01-15 09:57:23', '2026-01-15 09:57:23');
+('b0b0b0b0-b0b0-b0b0-b0b0-b0b0b0b0b0b1', 'BK 1001 AA', '10101010-1010-1010-1010-101010101010', '40', '35', 'available', null, null, null, '2026-01-15 09:57:23', '2026-01-15 09:57:23'), -- Low occupancy (5/40 used)
+('b0b0b0b0-b0b0-b0b0-b0b0-b0b0b0b0b0b2', 'BK 2002 BB', '20202020-2020-2020-2020-202020202020', '40', '15', 'available', null, null, null, '2026-01-15 09:57:23', '2026-01-15 09:57:23'), -- Half full (25/40 used)
+('b0b0b0b0-b0b0-b0b0-b0b0-b0b0b0b0b0b3', 'BK 3003 CC', '30303030-3030-3030-3030-303030303030', '40', '2', 'available', null, null, null, '2026-01-15 09:57:23', '2026-01-15 09:57:23'); -- Full (38/40 used)
 
 -- 5. Insert Bus Schedules
 -- Bus 1A Schedules

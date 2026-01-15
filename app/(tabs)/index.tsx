@@ -1,6 +1,7 @@
 import { Card } from '@/components/common/Card';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { getRoutes } from '@/lib/api/routes';
 import { useAuthStore } from '@/lib/store/authStore';
 import { BORDER_RADIUS, FONT_SIZE, SPACING } from '@/lib/utils/constants';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +19,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 
 const { height } = Dimensions.get('window');
 // Dynamic padding based on screen height (Responsive)
@@ -36,17 +38,27 @@ export default function HomeScreen() {
     { id: 'topup', title: 'Top Up', icon: 'wallet', color: theme.success },
   ] as const;
 
-  // Mock Popular Routes
-  const popularRoutes = [
-    { id: '1', name: 'Koridor 1', desc: 'Ayahanda - Padang Bulan', time: '45 min' },
-    { id: '2', name: 'Koridor 9', desc: 'Pancing - Pinang Baris', time: '60 min' },
-    { id: '3', name: 'Koridor 13', desc: 'Polonia - Marelan', time: '30 min' },
-  ];
+  const [routes, setRoutes] = React.useState<any[]>([]);
+
+  React.useEffect(() => {
+    fetchRoutes();
+  }, []);
+
+  const fetchRoutes = async () => {
+    try {
+      const data = await getRoutes();
+      setRoutes(data);
+    } catch (error) {
+      console.error('Error fetching routes:', error);
+    }
+  };
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
-    // Simulate refresh
-    setTimeout(() => setRefreshing(false), 2000);
+    // Refresh routes data
+    fetchRoutes().finally(() => {
+      setTimeout(() => setRefreshing(false), 1000);
+    });
   }, []);
 
   const renderQuickAction = (item: typeof quickActions[number]) => (
@@ -129,9 +141,29 @@ export default function HomeScreen() {
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Halte Terdekat</Text>
           <Card style={styles.nearbyCard} padding={0}>
-            <View style={[styles.mapPlaceholder, { backgroundColor: colorScheme === 'dark' ? '#374151' : '#E5E7EB' }]}>
-              <Ionicons name="map-outline" size={48} color={theme.textSecondary} />
-              <Text style={[styles.mapText, { color: theme.textSecondary }]}>Peta Halte</Text>
+            {/* Replaced placeholder with MapView */}
+            <View style={styles.mapContainer}>
+              <MapView
+                provider={PROVIDER_GOOGLE}
+                style={StyleSheet.absoluteFillObject}
+                initialRegion={{
+                  latitude: 3.5952, // Medan coordinates
+                  longitude: 98.6722,
+                  latitudeDelta: 0.005,
+                  longitudeDelta: 0.005,
+                }}
+                scrollEnabled={false}
+                zoomEnabled={false}
+              >
+                <Marker
+                  coordinate={{ latitude: 3.5952, longitude: 98.6722 }}
+                  title="Halte Unpri"
+                >
+                  <View style={[styles.markerContainer, { backgroundColor: theme.primary }]}>
+                    <Ionicons name="bus" size={14} color="#FFF" />
+                  </View>
+                </Marker>
+              </MapView>
             </View>
             <View style={styles.nearbyInfo}>
               <View>
@@ -149,27 +181,32 @@ export default function HomeScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Rute Populer</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/routes' as any)}>
               <Text style={[styles.seeAllButton, { color: theme.primary }]}>Lihat Semua</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.routesList}>
-            {popularRoutes.map((route) => (
+            {routes.slice(0, 3).map((route) => (
               <Card key={route.id} style={styles.routeCard}>
                 <View style={[styles.routeIcon, { backgroundColor: colorScheme === 'dark' ? '#374151' : '#F3F4F6' }]}>
                   <Ionicons name="bus" size={24} color={theme.primary} />
                 </View>
                 <View style={styles.routeInfo}>
-                  <Text style={[styles.routeName, { color: theme.text }]}>{route.name}</Text>
-                  <Text style={[styles.routeDesc, { color: theme.textSecondary }]}>{route.desc}</Text>
+                  <Text style={[styles.routeName, { color: theme.text }]}>{route.route_name}</Text>
+                  <Text style={[styles.routeDesc, { color: theme.textSecondary }]}>{route.description || 'Tidak ada deskripsi'}</Text>
                 </View>
                 <View style={[styles.routeTime, { backgroundColor: colorScheme === 'dark' ? '#374151' : '#F3F4F6' }]}>
                   <Ionicons name="time-outline" size={14} color={theme.textSecondary} />
-                  <Text style={[styles.timeText, { color: theme.textSecondary }]}>{route.time}</Text>
+                  <Text style={[styles.timeText, { color: theme.textSecondary }]}>
+                    {route.estimated_duration ? route.estimated_duration.replace('minutes', 'mnt').replace('mins', 'mnt') : '-'}
+                  </Text>
                 </View>
               </Card>
             ))}
+            {routes.length === 0 && (
+              <Text style={{ textAlign: 'center', color: theme.textSecondary, marginTop: 10 }}>Memuat rute...</Text>
+            )}
           </View>
         </View>
 
@@ -278,15 +315,21 @@ const styles = StyleSheet.create({
   },
   nearbyCard: {
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'transparent', // Will be handled by theme in component
   },
-  mapPlaceholder: {
-    height: 120,
-    justifyContent: 'center',
+  mapContainer: {
+    height: 150,
+    width: '100%',
+    overflow: 'hidden',
+  },
+  markerContainer: {
+    padding: 6,
+    borderRadius: BORDER_RADIUS.full,
+    borderWidth: 2,
+    borderColor: '#FFF',
     alignItems: 'center',
-  },
-  mapText: {
-    marginTop: SPACING.xs,
-    fontSize: FONT_SIZE.sm,
+    justifyContent: 'center',
   },
   nearbyInfo: {
     padding: SPACING.md,

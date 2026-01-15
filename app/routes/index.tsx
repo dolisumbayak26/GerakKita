@@ -2,6 +2,7 @@ import { Card } from '@/components/common/Card';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getRouteDetails, getRoutes } from '@/lib/api/routes';
+import { calculateBusETA, formatETAText, getBusCapacityStatus } from '@/lib/utils/busLogic';
 import { BORDER_RADIUS, FONT_SIZE, SPACING } from '@/lib/utils/constants';
 import { Ionicons } from '@expo/vector-icons';
 import { router, Stack } from 'expo-router';
@@ -113,20 +114,26 @@ export default function RoutesScreen() {
                     </View>
                 </TouchableOpacity>
 
-                {/* Expanded Details */}
                 <View style={styles.actionRow}>
                     <TouchableOpacity
                         onPress={() => toggleExpand(item.id)}
                         style={styles.expandButton}
                     >
-                        <Text style={[styles.expandText, { color: theme.primary }]}>
-                            Lihat {item.stops_count} Halte
-                        </Text>
                         <Ionicons
                             name={isExpanded ? "chevron-up" : "chevron-down"}
                             size={16}
                             color={theme.primary}
                         />
+                        <Text style={[styles.expandText, { color: theme.primary }]}>
+                            Lihat {item.stops_count} Halte
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        onPress={() => router.push({ pathname: '/booking/confirm', params: { routeId: item.id } })}
+                        style={[styles.bookButton, { backgroundColor: theme.primary }]}
+                    >
+                        <Text style={styles.bookButtonText}>Beli Tiket</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -159,50 +166,67 @@ export default function RoutesScreen() {
                                         <Text style={[styles.sectionTitle, { color: theme.text }]}>
                                             Armada Tersedia ({buses.filter((b: any) => b.status === 'available').length})
                                         </Text>
-                                        {buses.map((bus: any) => (
-                                            <View key={bus.id} style={{ marginBottom: 8 }}>
-                                                <View style={[styles.busItem, { borderColor: theme.border }]}>
-                                                    <View style={styles.busItemLeft}>
-                                                        <Ionicons name="bus" size={16} color={theme.primary} />
-                                                        <Text style={[styles.busNumber, { color: theme.text }]}>{bus.bus_number}</Text>
-                                                    </View>
-                                                    <View style={[
-                                                        styles.statusBadge,
-                                                        { backgroundColor: bus.status === 'available' ? theme.success + '20' : theme.error + '20' }
-                                                    ]}>
-                                                        <Text style={[
-                                                            styles.statusText,
-                                                            { color: bus.status === 'available' ? theme.success : theme.error }
-                                                        ]}>
-                                                            {bus.status === 'available' ? 'Tersedia' : 'Gangguan'}
-                                                        </Text>
-                                                    </View>
-                                                </View>
+                                        {buses.map((bus: any) => {
+                                            const capacityInfo = getBusCapacityStatus(bus.total_seats, bus.available_seats);
+                                            const etaMinutes = calculateBusETA(bus);
 
-                                                {/* Schedule for this bus */}
-                                                {bus.bus_schedules && bus.bus_schedules.length > 0 && (
-                                                    <View style={[styles.scheduleContainer, { backgroundColor: theme.background + '80' }]}>
-                                                        <Text style={[styles.scheduleTitle, { color: theme.textSecondary }]}>Jadwal Keberangkatan:</Text>
-                                                        <View style={styles.scheduleGrid}>
-                                                            {bus.bus_schedules
-                                                                .sort((a: any, b: any) => a.departure_time.localeCompare(b.departure_time))
-                                                                .slice(0, 3) // Show top 3
-                                                                .map((schedule: any, idx: number) => (
-                                                                    <View key={idx} style={[styles.scheduleBadge, { borderColor: theme.border }]}>
-                                                                        <Ionicons name="time-outline" size={10} color={theme.text} />
-                                                                        <Text style={[styles.scheduleText, { color: theme.text }]}>
-                                                                            {schedule.departure_time.substring(0, 5)}
-                                                                        </Text>
-                                                                    </View>
-                                                                ))}
-                                                            {bus.bus_schedules.length > 3 && (
-                                                                <Text style={[styles.moreText, { color: theme.primary }]}>+{bus.bus_schedules.length - 3} lagi</Text>
-                                                            )}
+                                            return (
+                                                <View key={bus.id} style={{ marginBottom: 12 }}>
+                                                    <View style={[styles.busItem, { borderColor: theme.border }]}>
+                                                        {/* Left: Bus Icon */}
+                                                        <View style={[styles.busIconBadge, { backgroundColor: theme.primary + '15', alignSelf: 'flex-start', marginTop: 2 }]}>
+                                                            <Ionicons name="bus" size={18} color={theme.primary} />
+                                                        </View>
+
+                                                        {/* Middle: Details */}
+                                                        <View style={{ flex: 1, paddingRight: 8 }}>
+                                                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                <Text style={[styles.busNumber, { color: theme.text }]}>{bus.bus_number}</Text>
+                                                            </View>
+
+                                                            <View style={[
+                                                                styles.capacityBadge,
+                                                                { backgroundColor: capacityInfo.color + '15', alignSelf: 'flex-start', marginBottom: 4 }
+                                                            ]}>
+                                                                <Ionicons name={capacityInfo.icon as any} size={10} color={capacityInfo.color} />
+                                                                <Text style={[
+                                                                    styles.capacityText,
+                                                                    { color: capacityInfo.color }
+                                                                ]}>
+                                                                    {capacityInfo.label}
+                                                                </Text>
+                                                            </View>
+
+                                                            <Text style={[styles.etaText, { color: theme.primary, textAlign: 'left', fontSize: 12 }]}>
+                                                                {formatETAText(etaMinutes)}
+                                                            </Text>
                                                         </View>
                                                     </View>
-                                                )}
-                                            </View>
-                                        ))}
+
+                                                    {/* Schedule for this bus */}
+                                                    {bus.bus_schedules && bus.bus_schedules.length > 0 && (
+                                                        <View style={[styles.scheduleContainer, { backgroundColor: theme.background }]}>
+                                                            <Text style={[styles.scheduleTitle, { color: theme.textSecondary }]}>Jadwal:</Text>
+                                                            <View style={styles.scheduleGrid}>
+                                                                {bus.bus_schedules
+                                                                    .sort((a: any, b: any) => a.departure_time.localeCompare(b.departure_time))
+                                                                    .slice(0, 3) // Show top 3
+                                                                    .map((schedule: any, idx: number) => (
+                                                                        <View key={idx} style={[styles.scheduleBadge, { borderColor: theme.border }]}>
+                                                                            <Text style={[styles.scheduleText, { color: theme.text }]}>
+                                                                                {schedule.departure_time.substring(0, 5)}
+                                                                            </Text>
+                                                                        </View>
+                                                                    ))}
+                                                                {bus.bus_schedules.length > 3 && (
+                                                                    <Text style={[styles.moreText, { color: theme.primary }]}>+{bus.bus_schedules.length - 3}</Text>
+                                                                )}
+                                                            </View>
+                                                        </View>
+                                                    )}
+                                                </View>
+                                            );
+                                        })}
                                     </View>
                                 )}
                             </>
@@ -390,36 +414,55 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingVertical: 8,
-        borderBottomWidth: 0.5,
+        paddingVertical: 12,
+        paddingHorizontal: 12,
+        borderRadius: BORDER_RADIUS.md,
+        borderWidth: 1,
+        backgroundColor: 'transparent',
     },
     busItemLeft: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: SPACING.xs,
+        gap: SPACING.sm,
+    },
+    busIconBadge: {
+        width: 36,
+        height: 36,
+        borderRadius: BORDER_RADIUS.full,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     busNumber: {
-        fontSize: FONT_SIZE.sm,
-        fontWeight: '500',
-    },
-    statusBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 12,
-    },
-    statusText: {
-        fontSize: 10,
+        fontSize: FONT_SIZE.md,
         fontWeight: 'bold',
-        textTransform: 'capitalize',
+        marginBottom: 4,
+    },
+    etaText: {
+        fontSize: FONT_SIZE.md,
+        fontWeight: 'bold',
+        textAlign: 'right',
+    },
+    capacityBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: BORDER_RADIUS.sm,
+    },
+    capacityText: {
+        fontSize: 10,
+        fontWeight: '600',
     },
     scheduleContainer: {
-        marginTop: 4,
-        padding: 8,
-        borderRadius: BORDER_RADIUS.md,
+        marginTop: 6,
+        marginLeft: 48, // Indent to align with text
+        padding: 0,
     },
     scheduleTitle: {
         fontSize: 10,
         marginBottom: 4,
+        fontWeight: '500',
     },
     scheduleGrid: {
         flexDirection: 'row',
@@ -428,13 +471,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     scheduleBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 2,
         paddingHorizontal: 6,
         paddingVertical: 2,
         borderRadius: 4,
         borderWidth: 1,
+        backgroundColor: 'transparent',
     },
     scheduleText: {
         fontSize: 10,
@@ -443,5 +484,16 @@ const styles = StyleSheet.create({
     moreText: {
         fontSize: 10,
         fontWeight: '600',
-    }
+    },
+    bookButton: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: BORDER_RADIUS.full,
+        marginLeft: 'auto', // Push to right
+    },
+    bookButtonText: {
+        fontSize: FONT_SIZE.xs,
+        fontWeight: 'bold',
+        color: '#FFF',
+    },
 });
