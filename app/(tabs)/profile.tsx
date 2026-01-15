@@ -7,13 +7,8 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-nati
 export default function ProfileScreen() {
     const { user, logout } = useAuth();
 
-    const handleLogout = async () => {
-        try {
-            await logout();
-        } catch (error) {
-            console.error('Logout error:', error);
-        }
-    };
+    // Logout handles its own errors and state clearing
+    const handleLogout = logout;
 
     return (
         <ScrollView style={styles.container}>

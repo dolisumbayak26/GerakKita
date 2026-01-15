@@ -5,25 +5,41 @@
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+const tintColorLight = '#0EA5E9'; // Primary Blue
+const tintColorDark = '#38BDF8'; // Lighter Blue for Dark Mode
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
+    text: '#111827',
+    textSecondary: '#6B7280',
+    background: '#F9FAFB',
+    card: '#FFFFFF',
+    border: '#E5E7EB',
     tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
+    icon: '#6B7280',
+    tabIconDefault: '#9CA3AF',
     tabIconSelected: tintColorLight,
+    primary: '#0EA5E9',
+    secondary: '#06B6D4',
+    success: '#10B981',
+    warning: '#F59E0B',
+    error: '#EF4444',
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
+    text: '#F9FAFB',
+    textSecondary: '#9CA3AF',
+    background: '#111827', // Darker background
+    card: '#1F2937', // Dark card
+    border: '#374151',
     tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
+    icon: '#9CA3AF',
+    tabIconDefault: '#6B7280',
     tabIconSelected: tintColorDark,
+    primary: '#38BDF8', // Lighter for contrast
+    secondary: '#22D3EE',
+    success: '#34D399',
+    warning: '#FBBF24',
+    error: '#F87171',
   },
 };
 

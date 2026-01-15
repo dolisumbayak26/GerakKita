@@ -104,6 +104,37 @@ export interface Database {
                     created_at: string;
                 };
             };
+            reviews: {
+                Row: {
+                    id: string;
+                    user_id: string;
+                    bus_id: string | null;
+                    route_id: string | null;
+                    rating: number;
+                    comment: string | null;
+                    created_at: string;
+                };
+            };
+            route_stops: {
+                Row: {
+                    id: string;
+                    route_id: string;
+                    bus_stop_id: string;
+                    stop_order: number;
+                    fare_from_origin: number;
+                };
+            };
+            bus_schedules: {
+                Row: {
+                    id: string;
+                    bus_id: string;
+                    departure_time: string;
+                    arrival_time: string;
+                    days_of_week: string[] | null;
+                    active: boolean;
+                    created_at: string;
+                };
+            };
         };
     };
 }
@@ -125,6 +156,15 @@ export type Transaction = Database['public']['Tables']['transactions']['Row'];
 
 // Ticket type
 export type Ticket = Database['public']['Tables']['tickets']['Row'];
+
+// Review type
+export type Review = Database['public']['Tables']['reviews']['Row'];
+
+// Route Stop type
+export type RouteStop = Database['public']['Tables']['route_stops']['Row'];
+
+// Bus Schedule type
+export type BusSchedule = Database['public']['Tables']['bus_schedules']['Row'];
 
 // Auth types
 export interface AuthSession {

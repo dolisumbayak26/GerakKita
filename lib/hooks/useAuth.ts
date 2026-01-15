@@ -52,11 +52,14 @@ export const useAuth = () => {
 
     const logout = async () => {
         try {
+            // Attempt Supabase sign out
             await supabase.auth.signOut();
-            storeLogout();
         } catch (error) {
-            console.error('Logout error:', error);
-            throw error;
+            // Log error but continue to clear local state
+            console.error('Logout error (Supabase):', error);
+        } finally {
+            // Always clear local store
+            storeLogout();
         }
     };
 

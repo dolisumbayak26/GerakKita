@@ -108,6 +108,52 @@ export const updateUserProfile = async (
     return data;
 };
 
+// Verify OTP
+export const verifyOtp = async (email: string, token: string) => {
+    // Try 'signup' verification first (for new users)
+    let { data, error } = await supabase.auth.verifyOtp({
+        email,
+        token,
+        type: 'signup'
+    });
+
+    // If 'signup' fails, try 'email' (for other verifications)
+    if (error) {
+        const result = await supabase.auth.verifyOtp({
+            email,
+            token,
+            type: 'email'
+        });
+        if (result.error) throw error; // Throw original error or new error?
+        // If second attempt succeeds, use that data
+        data = result.data;
+        error = result.error;
+    }
+
+    if (error) throw error;
+
+    if (!data.user || !data.session) {
+        throw new Error('Verification failed: User or session missing');
+    }
+
+    // Fetch user profile
+    const profile = await getUserProfile(data.user.id);
+
+    return { user: profile, session: data.session };
+};
+
+// Resend OTP
+export const resendOtp = async (email: string) => {
+    // We assume this is for signup verification since we are in the register flow
+    const { data, error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+    });
+
+    if (error) throw error;
+    return data;
+};
+
 // Reset password
 export const resetPassword = async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {

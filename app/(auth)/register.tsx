@@ -71,16 +71,11 @@ export default function RegisterScreen() {
                 phone_number: phoneNumber || undefined,
             });
 
-            Alert.alert(
-                'Registrasi Berhasil!',
-                'Akun Anda telah dibuat. Silakan login.',
-                [
-                    {
-                        text: 'OK',
-                        onPress: () => router.replace('/login'),
-                    },
-                ]
-            );
+            // Navigate to OTP verification screen
+            router.push({
+                pathname: '/verify-otp',
+                params: { email },
+            });
         } catch (error: any) {
             Alert.alert(
                 'Registrasi Gagal',
