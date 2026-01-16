@@ -3,25 +3,32 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { createBooking } from '@/lib/api/bookings';
 import { getRouteDetails } from '@/lib/api/routes';
+import { hasPinSet, verifyPin } from '@/lib/api/security';
 import { getWalletBalance } from '@/lib/api/wallet';
 import { useAuthStore } from '@/lib/store/authStore';
 import { BORDER_RADIUS, FONT_SIZE, SPACING } from '@/lib/utils/constants';
 import { formatCurrency } from '@/lib/utils/formatters';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Dimensions,
+    Keyboard,
+    Modal,
     Platform,
     SafeAreaView,
     ScrollView,
     StatusBar,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View
 } from 'react-native';
+
+const { width, height } = Dimensions.get('window');
 
 export default function BookingConfirmScreen() {
     const { routeId } = useLocalSearchParams<{ routeId: string }>();
@@ -41,6 +48,13 @@ export default function BookingConfirmScreen() {
     const [quantity, setQuantity] = useState<number>(1);
     const [walletBalance, setWalletBalance] = useState<number | null>(null);
 
+    // PIN Modal State
+    const [pinModalVisible, setPinModalVisible] = useState(false);
+    const [pin, setPin] = useState('');
+    const [pinError, setPinError] = useState<string | null>(null);
+    const [verifyingPin, setVerifyingPin] = useState(false);
+    const pinInputRef = useRef<TextInput>(null);
+
     // Fixed price for MVP
     const UNIT_PRICE = 3500;
     const totalPrice = UNIT_PRICE * quantity;
@@ -54,6 +68,20 @@ export default function BookingConfirmScreen() {
             getWalletBalance(user.id).then(w => setWalletBalance(w?.balance || 0));
         }
     }, [routeId, user?.id]);
+
+    useEffect(() => {
+        if (pinModalVisible) {
+            setPin('');
+            setPinError(null);
+            setTimeout(() => pinInputRef.current?.focus(), 100);
+        }
+    }, [pinModalVisible]);
+
+    useEffect(() => {
+        if (pin.length === 6 && pinModalVisible) {
+            verifyAndPay(pin);
+        }
+    }, [pin]);
 
     const loadRouteDetails = async () => {
         try {
@@ -84,18 +112,63 @@ export default function BookingConfirmScreen() {
             return;
         }
 
+        // TRIGGER PIN CHECK FOR WALLET
+        if (selectedPaymentMethod === 'wallet') {
+            try {
+                const hasPin = await hasPinSet(user.id);
+                if (!hasPin) {
+                    Alert.alert('PIN Belum Diatur', 'Demi keamanan, harap atur PIN di menu Profile sebelum menggunakan saldo wallet.', [
+                        { text: 'Batal', style: 'cancel' },
+                        { text: 'Atur PIN', onPress: () => router.push('/profile/edit-pin') }
+                    ]);
+                    return;
+                }
+                setPinModalVisible(true);
+            } catch (e) {
+                Alert.alert('Eror', 'Gagal mengecek status keamanan');
+            }
+            return;
+        }
+
+        // Processing for non-wallet
+        processBookingTransaction();
+    };
+
+    const verifyAndPay = async (inputPin: string) => {
+        if (!user) return;
+        setVerifyingPin(true);
+        try {
+            const isValid = await verifyPin(user.id, inputPin);
+            if (isValid) {
+                Keyboard.dismiss();
+                setPinModalVisible(false); // Close first
+                setTimeout(() => {
+                    processBookingTransaction(); // Then process
+                }, 300);
+            } else {
+                setPinError('PIN Salah');
+                setPin('');
+            }
+        } catch (e) {
+            setPinError('Gagal verifikasi');
+        } finally {
+            setVerifyingPin(false);
+        }
+    };
+
+    const processBookingTransaction = async () => {
         try {
             setSubmitting(true);
             const result = await createBooking({
-                userId: user.id,
+                userId: user!.id,
                 routeId: routeId,
-                originStopId: originId,
-                destinationStopId: destinationId,
+                originStopId: originId!,
+                destinationStopId: destinationId!,
                 amount: totalPrice,
                 quantity: quantity,
                 paymentMethod: selectedPaymentMethod,
-                userEmail: user.email || 'customer@example.com',
-                userName: user.full_name || 'Customer'
+                userEmail: user!.email || 'customer@example.com',
+                userName: user!.full_name || 'Customer'
             });
 
             if (result.redirect_url) {
@@ -118,7 +191,7 @@ export default function BookingConfirmScreen() {
         } finally {
             setSubmitting(false);
         }
-    };
+    }
 
     if (loading) {
         return (
@@ -133,6 +206,7 @@ export default function BookingConfirmScreen() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+            <Stack.Screen options={{ headerShown: false }} />
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                     <Ionicons name="arrow-back" size={24} color={theme.text} />
@@ -335,6 +409,63 @@ export default function BookingConfirmScreen() {
                     )}
                 </TouchableOpacity>
             </View>
+
+            {/* PIN Verification Modal */}
+            <Modal
+                visible={pinModalVisible}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setPinModalVisible(false)}
+            >
+                <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
+                    <View style={[styles.modalCard, { backgroundColor: theme.background }]}>
+                        <View style={styles.modalHeader}>
+                            <Text style={[styles.modalTitle, { color: theme.text }]}>Verifikasi PIN</Text>
+                            <TouchableOpacity onPress={() => setPinModalVisible(false)}>
+                                <Ionicons name="close" size={24} color={theme.text} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <Text style={[styles.modalSubtitle, { color: theme.textSecondary }]}>
+                            Masukkan PIN 6 digit untuk verifikasi pembayaran.
+                        </Text>
+
+                        <View style={styles.dotsContainer}>
+                            {[0, 1, 2, 3, 4, 5].map((i) => (
+                                <View
+                                    key={i}
+                                    style={[
+                                        styles.dot,
+                                        {
+                                            borderColor: pinError ? theme.error : (pin.length > i ? theme.primary : theme.border),
+                                            backgroundColor: pin.length > i ? theme.primary : 'transparent',
+                                        }
+                                    ]}
+                                />
+                            ))}
+                        </View>
+
+                        {pinError && <Text style={[styles.errorText, { color: theme.error }]}>{pinError}</Text>}
+
+                        {verifyingPin && <ActivityIndicator color={theme.primary} style={{ marginTop: 10 }} />}
+
+                        <TextInput
+                            ref={pinInputRef}
+                            style={styles.hiddenInput}
+                            value={pin}
+                            onChangeText={(t) => {
+                                const val = t.replace(/[^0-9]/g, '');
+                                if (val.length <= 6) {
+                                    setPin(val);
+                                    if (pinError) setPinError(null);
+                                }
+                            }}
+                            keyboardType="number-pad"
+                            maxLength={6}
+                        />
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -566,4 +697,49 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         marginTop: SPACING.md,
     },
+    modalOverlay: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    modalCard: {
+        width: '100%',
+        maxWidth: 340,
+        borderRadius: BORDER_RADIUS.lg,
+        padding: SPACING.xl,
+        alignItems: 'center',
+        position: 'relative',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        width: '100%',
+        marginBottom: SPACING.md,
+    },
+    modalTitle: {
+        fontSize: FONT_SIZE.lg,
+        fontWeight: 'bold',
+    },
+    modalSubtitle: {
+        fontSize: FONT_SIZE.sm,
+        textAlign: 'center',
+        marginBottom: SPACING.xl,
+    },
+    dotsContainer: {
+        flexDirection: 'row',
+        gap: SPACING.lg,
+        marginBottom: SPACING.lg,
+    },
+    hiddenInput: {
+        position: 'absolute',
+        width: '100%',
+        height: '100%',
+        opacity: 0,
+    },
+    errorText: {
+        fontSize: FONT_SIZE.md,
+        marginTop: SPACING.sm,
+        fontWeight: 'bold'
+    }
 });

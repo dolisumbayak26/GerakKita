@@ -80,7 +80,7 @@ export default function ProfileScreen() {
                 <MenuItem
                     icon="lock-closed-outline"
                     title="Ubah PIN"
-                    onPress={() => { }} // Belum diimplementasikan
+                    onPress={() => router.push('/profile/edit-pin')}
                     theme={theme}
                 />
                 <MenuItem
