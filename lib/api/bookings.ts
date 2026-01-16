@@ -171,3 +171,26 @@ export const createBooking = async (params: CreateBookingParams) => {
 
     return { transaction, tickets, redirect_url: snapData.redirect_url, token: snapData.token };
 };
+
+export const getUserTransactions = async (userId: string) => {
+    const { data, error } = await supabase
+        .from('transactions')
+        .select(`
+            *,
+            routes (
+                route_number,
+                route_name
+            ),
+            origin_stop:bus_stops!origin_stop_id (
+                name
+            ),
+            destination_stop:bus_stops!destination_stop_id (
+                name
+            )
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data;
+};
