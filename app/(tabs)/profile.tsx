@@ -5,12 +5,14 @@ import { useAuth } from '@/lib/hooks/useAuth';
 import { useAuthStore } from '@/lib/store/authStore';
 import { BORDER_RADIUS, FONT_SIZE, SPACING } from '@/lib/utils/constants';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ProfileScreen() {
     const { user, logout } = useAuth();
     const { setUser } = useAuthStore();
+    const router = useRouter();
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme ?? 'light'];
     const [uploading, setUploading] = useState(false);
@@ -72,25 +74,25 @@ export default function ProfileScreen() {
                     icon="call-outline"
                     title="Nomor Telepon"
                     subtitle={user?.phone_number || 'Belum diatur'}
-                    onPress={() => { }}
+                    onPress={() => router.push('/profile/edit-phone')}
                     theme={theme}
                 />
                 <MenuItem
                     icon="lock-closed-outline"
                     title="Ubah PIN"
-                    onPress={() => { }}
+                    onPress={() => { }} // Belum diimplementasikan
                     theme={theme}
                 />
                 <MenuItem
                     icon="chatbubble-ellipses-outline"
                     title="Pusat Bantuan"
-                    onPress={() => { }}
+                    onPress={() => router.push('/profile/help-center')}
                     theme={theme}
                 />
                 <MenuItem
                     icon="shield-checkmark-outline"
                     title="Kebijakan Privasi"
-                    onPress={() => { }}
+                    onPress={() => router.push('/profile/privacy-policy')}
                     theme={theme}
                 />
             </View>
