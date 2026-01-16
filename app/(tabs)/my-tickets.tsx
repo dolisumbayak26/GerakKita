@@ -68,7 +68,7 @@ export default function TicketsScreen() {
             ? format(new Date(item.transactions.purchase_date), 'dd MMM yyyy, HH:mm', { locale: id })
             : '-';
         const validUntil = item.valid_until
-            ? format(new Date(item.valid_until), 'HH:mm', { locale: id })
+            ? format(new Date(item.valid_until), 'dd MMM yyyy, HH:mm', { locale: id })
             : '-';
 
         return (
@@ -117,7 +117,7 @@ export default function TicketsScreen() {
                         {isActive && (
                             <View style={styles.detailRow}>
                                 <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>Valid Hingga</Text>
-                                <Text style={[styles.detailValue, { color: theme.error }]}>Hari ini, {validUntil}</Text>
+                                <Text style={[styles.detailValue, { color: theme.error }]}>{validUntil}</Text>
                             </View>
                         )}
                         <View style={styles.detailRow}>

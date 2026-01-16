@@ -96,7 +96,7 @@ export default function BookingConfirmScreen() {
                 });
             } else {
                 Alert.alert('Sukses', 'Tiket berhasil dibeli!', [
-                    { text: 'OK', onPress: () => router.replace('/(tabs)/tickets') }
+                    { text: 'OK', onPress: () => router.replace('/(tabs)/my-tickets') }
                 ]);
             }
         } catch (error) {
