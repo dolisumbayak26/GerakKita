@@ -1,54 +1,65 @@
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/lib/hooks/useAuth';
-import { BORDER_RADIUS, COLORS, FONT_SIZE, SPACING } from '@/lib/utils/constants';
+import { BORDER_RADIUS, FONT_SIZE, SPACING } from '@/lib/utils/constants';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ProfileScreen() {
     const { user, logout } = useAuth();
+    const colorScheme = useColorScheme();
+    const theme = Colors[colorScheme ?? 'light'];
 
     // Logout handles its own errors and state clearing
     const handleLogout = logout;
 
     return (
-        <ScrollView style={styles.container}>
-            <View style={styles.header}>
-                <View style={styles.avatar}>
+        <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
+            <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+                <View style={[styles.avatar, { backgroundColor: theme.primary }]}>
                     <Text style={styles.avatarText}>
                         {user?.full_name?.charAt(0).toUpperCase() || 'U'}
                     </Text>
                 </View>
-                <Text style={styles.name}>{user?.full_name || 'User'}</Text>
-                <Text style={styles.email}>{user?.email || ''}</Text>
+                <Text style={[styles.name, { color: theme.text }]}>{user?.full_name || 'User'}</Text>
+                <Text style={[styles.email, { color: theme.textSecondary }]}>{user?.email || ''}</Text>
             </View>
 
-            <View style={styles.section}>
+            <View style={[styles.section, { backgroundColor: theme.card }]}>
                 <MenuItem
                     icon="call-outline"
                     title="Nomor Telepon"
                     subtitle={user?.phone_number || 'Belum diatur'}
                     onPress={() => { }}
+                    theme={theme}
                 />
                 <MenuItem
                     icon="lock-closed-outline"
                     title="Ubah PIN"
                     onPress={() => { }}
+                    theme={theme}
                 />
                 <MenuItem
                     icon="chatbubble-ellipses-outline"
                     title="Pusat Bantuan"
                     onPress={() => { }}
+                    theme={theme}
                 />
                 <MenuItem
                     icon="shield-checkmark-outline"
                     title="Kebijakan Privasi"
                     onPress={() => { }}
+                    theme={theme}
                 />
             </View>
 
-            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-                <Ionicons name="log-out-outline" size={20} color={COLORS.error} />
-                <Text style={styles.logoutText}>Keluar</Text>
+            <TouchableOpacity
+                style={[styles.logoutButton, { backgroundColor: theme.card }]}
+                onPress={handleLogout}
+            >
+                <Ionicons name="log-out-outline" size={20} color={theme.error || '#EF4444'} />
+                <Text style={[styles.logoutText, { color: theme.error || '#EF4444' }]}>Keluar</Text>
             </TouchableOpacity>
         </ScrollView>
     );
@@ -59,21 +70,25 @@ interface MenuItemProps {
     title: string;
     subtitle?: string;
     onPress: () => void;
+    theme: any;
 }
 
-const MenuItem: React.FC<MenuItemProps> = ({ icon, title, subtitle, onPress }) => {
+const MenuItem: React.FC<MenuItemProps> = ({ icon, title, subtitle, onPress, theme }) => {
     return (
-        <TouchableOpacity style={styles.menuItem} onPress={onPress}>
+        <TouchableOpacity
+            style={[styles.menuItem, { borderBottomColor: theme.border }]}
+            onPress={onPress}
+        >
             <View style={styles.menuItemLeft}>
-                <View style={styles.menuItemIcon}>
-                    <Ionicons name={icon} size={20} color={COLORS.primary} />
+                <View style={[styles.menuItemIcon, { backgroundColor: theme.background }]}>
+                    <Ionicons name={icon} size={20} color={theme.primary} />
                 </View>
                 <View>
-                    <Text style={styles.menuItemTitle}>{title}</Text>
-                    {subtitle && <Text style={styles.menuItemSubtitle}>{subtitle}</Text>}
+                    <Text style={[styles.menuItemTitle, { color: theme.text }]}>{title}</Text>
+                    {subtitle && <Text style={[styles.menuItemSubtitle, { color: theme.textSecondary }]}>{subtitle}</Text>}
                 </View>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.gray[400]} />
+            <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
         </TouchableOpacity>
     );
 };
@@ -81,19 +96,18 @@ const MenuItem: React.FC<MenuItemProps> = ({ icon, title, subtitle, onPress }) =
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: COLORS.background,
     },
     header: {
         alignItems: 'center',
         paddingVertical: SPACING.xl,
-        backgroundColor: COLORS.white,
         marginBottom: SPACING.md,
+        borderBottomWidth: 1, // Optional: add border for better separation in dark mode
+        borderBottomColor: 'transparent', // controlled by style prop
     },
     avatar: {
         width: 80,
         height: 80,
         borderRadius: 40,
-        backgroundColor: COLORS.primary,
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: SPACING.md,
@@ -101,20 +115,17 @@ const styles = StyleSheet.create({
     avatarText: {
         fontSize: FONT_SIZE.xxxl,
         fontWeight: 'bold',
-        color: COLORS.white,
+        color: '#FFFFFF', // Keep white as avatar background is likely primary color
     },
     name: {
         fontSize: FONT_SIZE.xl,
         fontWeight: 'bold',
-        color: COLORS.text.primary,
         marginBottom: SPACING.xs,
     },
     email: {
         fontSize: FONT_SIZE.sm,
-        color: COLORS.text.secondary,
     },
     section: {
-        backgroundColor: COLORS.white,
         marginBottom: SPACING.md,
     },
     menuItem: {
@@ -124,7 +135,6 @@ const styles = StyleSheet.create({
         paddingVertical: SPACING.md,
         paddingHorizontal: SPACING.lg,
         borderBottomWidth: 1,
-        borderBottomColor: COLORS.gray[100],
     },
     menuItemLeft: {
         flexDirection: 'row',
@@ -134,7 +144,6 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: COLORS.gray[50],
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: SPACING.md,
@@ -142,18 +151,15 @@ const styles = StyleSheet.create({
     menuItemTitle: {
         fontSize: FONT_SIZE.md,
         fontWeight: '600',
-        color: COLORS.text.primary,
     },
     menuItemSubtitle: {
         fontSize: FONT_SIZE.sm,
-        color: COLORS.text.secondary,
         marginTop: 2,
     },
     logoutButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: COLORS.white,
         paddingVertical: SPACING.md,
         marginHorizontal: SPACING.lg,
         borderRadius: BORDER_RADIUS.lg,
@@ -163,6 +169,5 @@ const styles = StyleSheet.create({
     logoutText: {
         fontSize: FONT_SIZE.md,
         fontWeight: '600',
-        color: COLORS.error,
     },
 });
