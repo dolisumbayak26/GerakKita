@@ -3,8 +3,10 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { createBooking } from '@/lib/api/bookings';
 import { getRouteDetails } from '@/lib/api/routes';
+import { getWalletBalance } from '@/lib/api/wallet';
 import { useAuthStore } from '@/lib/store/authStore';
 import { BORDER_RADIUS, FONT_SIZE, SPACING } from '@/lib/utils/constants';
+import { formatCurrency } from '@/lib/utils/formatters';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -37,6 +39,7 @@ export default function BookingConfirmScreen() {
     const [destinationId, setDestinationId] = useState<string | null>(null);
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('qris');
     const [quantity, setQuantity] = useState<number>(1);
+    const [walletBalance, setWalletBalance] = useState<number | null>(null);
 
     // Fixed price for MVP
     const UNIT_PRICE = 3500;
@@ -47,7 +50,10 @@ export default function BookingConfirmScreen() {
         if (routeId) {
             loadRouteDetails();
         }
-    }, [routeId]);
+        if (user?.id) {
+            getWalletBalance(user.id).then(w => setWalletBalance(w?.balance || 0));
+        }
+    }, [routeId, user?.id]);
 
     const loadRouteDetails = async () => {
         try {
@@ -72,6 +78,12 @@ export default function BookingConfirmScreen() {
     const handleBooking = async () => {
         if (!user || !originId || !destinationId) return;
 
+        // Final check for wallet balance
+        if (selectedPaymentMethod === 'wallet' && (walletBalance || 0) < totalPrice) {
+            Alert.alert('Saldo Kurang', 'Saldo Wallet Anda tidak cukup untuk transaksi ini.');
+            return;
+        }
+
         try {
             setSubmitting(true);
             const result = await createBooking({
@@ -95,13 +107,14 @@ export default function BookingConfirmScreen() {
                     }
                 });
             } else {
+                // For Wallet Payment (Instant)
                 Alert.alert('Sukses', 'Tiket berhasil dibeli!', [
                     { text: 'OK', onPress: () => router.replace('/(tabs)/my-tickets') }
                 ]);
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Booking failed:', error);
-            Alert.alert('Gagal', 'Terjadi kesalahan saat pemesanan.');
+            Alert.alert('Gagal', error.message || 'Terjadi kesalahan saat pemesanan.');
         } finally {
             setSubmitting(false);
         }
@@ -175,6 +188,47 @@ export default function BookingConfirmScreen() {
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: theme.text }]}>Metode Pembayaran</Text>
 
+                    {/* NEW: Wallet Option */}
+                    <TouchableOpacity
+                        style={[
+                            styles.paymentOption,
+                            {
+                                borderColor: selectedPaymentMethod === 'wallet' ? theme.primary : theme.border,
+                                backgroundColor: selectedPaymentMethod === 'wallet' ? theme.primary + '10' : 'transparent',
+                                opacity: (walletBalance || 0) < totalPrice ? 0.6 : 1
+                            }
+                        ]}
+                        onPress={() => {
+                            if ((walletBalance || 0) >= totalPrice) {
+                                setSelectedPaymentMethod('wallet');
+                            } else {
+                                Alert.alert('Saldo Tidak Cukup', 'Silakan top up terlebih dahulu.');
+                            }
+                        }}
+                    >
+                        <View style={styles.paymentOptionContent}>
+                            <View style={[styles.paymentIconContainer, { backgroundColor: theme.primary }]}>
+                                <Ionicons name="wallet-outline" size={24} color="#FFF" />
+                            </View>
+                            <View>
+                                <Text style={[styles.paymentOptionText, { color: theme.text }]}>Saldo GerakPay</Text>
+                                <Text style={[styles.walletBalanceSubtext, { color: theme.textSecondary }]}>
+                                    {walletBalance !== null ? formatCurrency(walletBalance) : '...'}
+                                </Text>
+                            </View>
+                        </View>
+                        <View style={[
+                            styles.radioButton,
+                            { borderColor: selectedPaymentMethod === 'wallet' ? theme.primary : theme.textSecondary }
+                        ]}>
+                            {selectedPaymentMethod === 'wallet' && (
+                                <View style={[styles.radioInner, { backgroundColor: theme.primary }]} />
+                            )}
+                        </View>
+                    </TouchableOpacity>
+
+                    <Text style={[styles.sectionSubtitle, { marginTop: SPACING.md, marginBottom: SPACING.sm, color: theme.textSecondary }]}>Metode Lainnya</Text>
+
                     {[
                         { id: 'qris', name: 'QRIS', icon: 'qr-code', color: theme.text },
                         { id: 'gopay', name: 'GoPay', icon: 'wallet', color: '#00AED6' }, // Gojek Blue
@@ -194,7 +248,6 @@ export default function BookingConfirmScreen() {
                             <View style={styles.paymentOptionContent}>
                                 <View style={[styles.paymentIconContainer, { backgroundColor: theme.background }]}>
                                     <View>
-                                        {/* Using generic icons for MVP since we don't have assets yet */}
                                         <Ionicons name={method.icon as any} size={24} color={method.color} />
                                     </View>
                                 </View>
@@ -343,6 +396,10 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         marginBottom: SPACING.md,
     },
+    sectionSubtitle: {
+        fontSize: FONT_SIZE.sm,
+        fontWeight: '600',
+    },
     timelineContainer: {
         paddingHorizontal: SPACING.xs,
     },
@@ -459,6 +516,10 @@ const styles = StyleSheet.create({
     paymentOptionText: {
         fontSize: FONT_SIZE.md,
         fontWeight: '500',
+    },
+    walletBalanceSubtext: {
+        fontSize: FONT_SIZE.sm,
+        marginTop: 2
     },
     radioButton: {
         width: 20,

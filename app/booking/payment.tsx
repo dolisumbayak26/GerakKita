@@ -57,6 +57,30 @@ export default function PaymentScreen() {
         }
     };
 
+    const INJECTED_JS = `
+        (function() {
+            setInterval(function() {
+                var bodyText = document.body.innerText;
+                if (bodyText.includes('Transaction is successful') || 
+                    bodyText.includes('PAID') || 
+                    bodyText.includes('Pembayaran Berhasil')) {
+                    window.ReactNativeWebView.postMessage(JSON.stringify({status: 'success'}));
+                }
+            }, 1000);
+        })();
+    `;
+
+    const handleWebViewMessage = (event: any) => {
+        try {
+            const data = JSON.parse(event.nativeEvent.data);
+            if (data.status === 'success') {
+                handlePaymentSuccess();
+            }
+        } catch (e) {
+            // Ignore
+        }
+    };
+
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
             <StatusBar barStyle="dark-content" />
@@ -77,6 +101,8 @@ export default function PaymentScreen() {
                 style={{ flex: 1 }}
                 onLoadEnd={() => setLoading(false)}
                 onNavigationStateChange={handleNavigationStateChange}
+                injectedJavaScript={INJECTED_JS}
+                onMessage={handleWebViewMessage}
                 javaScriptEnabled={true}
                 domStorageEnabled={true}
                 startInLoadingState={true}

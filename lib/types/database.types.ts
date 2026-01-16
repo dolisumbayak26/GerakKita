@@ -135,6 +135,55 @@ export interface Database {
                     created_at: string;
                 };
             };
+            wallets: {
+                Row: {
+                    user_id: string;
+                    balance: number;
+                    last_updated: string;
+                };
+                Insert: {
+                    user_id: string;
+                    balance?: number;
+                    last_updated?: string;
+                };
+                Update: {
+                    user_id?: string;
+                    balance?: number;
+                    last_updated?: string;
+                };
+            };
+            wallet_transactions: {
+                Row: {
+                    id: string;
+                    wallet_id: string;
+                    amount: number;
+                    type: 'topup' | 'payment' | 'refund';
+                    description: string | null;
+                    payment_reference: string | null;
+                    status: 'pending' | 'success' | 'failed';
+                    created_at: string;
+                };
+                Insert: {                                       
+                    id?: string;
+                    wallet_id: string;
+                    amount: number;
+                    type: 'topup' | 'payment' | 'refund';
+                    description?: string | null;
+                    payment_reference?: string | null;
+                    status: 'pending' | 'success' | 'failed';
+                    created_at?: string;
+                };
+                Update: {
+                    id?: string;
+                    wallet_id?: string;
+                    amount?: number;
+                    type?: 'topup' | 'payment' | 'refund';
+                    description?: string | null;
+                    payment_reference?: string | null;
+                    status?: 'pending' | 'success' | 'failed';
+                    created_at?: string;
+                };
+            };
         };
     };
 }
@@ -165,6 +214,10 @@ export type RouteStop = Database['public']['Tables']['route_stops']['Row'];
 
 // Bus Schedule type
 export type BusSchedule = Database['public']['Tables']['bus_schedules']['Row'];
+
+// Wallet types
+export type Wallet = Database['public']['Tables']['wallets']['Row'];
+export type WalletTransaction = Database['public']['Tables']['wallet_transactions']['Row'];
 
 // Auth types
 export interface AuthSession {

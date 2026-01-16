@@ -2,11 +2,13 @@ import { Card } from '@/components/common/Card';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getRoutes } from '@/lib/api/routes';
+import { getWalletBalance } from '@/lib/api/wallet';
 import { useAuthStore } from '@/lib/store/authStore';
 import { BORDER_RADIUS, FONT_SIZE, SPACING } from '@/lib/utils/constants';
+import { formatCurrency } from '@/lib/utils/formatters';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import React from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Dimensions,
   Platform,
@@ -17,7 +19,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 
@@ -27,9 +29,28 @@ const SCREEN_PADDING = height > 800 ? SPACING.xl : SPACING.lg;
 
 export default function HomeScreen() {
   const { user } = useAuthStore();
+  const router = useRouter();
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? 'light'];
-  const [refreshing, setRefreshing] = React.useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [balance, setBalance] = useState<number | null>(null);
+
+  // Focus effect to reload balance when returning to home
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id) fetchBalance();
+    }, [user?.id])
+  );
+
+  const fetchBalance = async () => {
+    if (!user?.id) return;
+    try {
+      const wallet = await getWalletBalance(user.id);
+      setBalance(wallet?.balance || 0);
+    } catch (error) {
+      console.log('Wallet fetch error:', error);
+    }
+  };
 
   // Quick Actions Data (Dynamic Colors)
   const quickActions = [
@@ -38,9 +59,9 @@ export default function HomeScreen() {
     { id: 'my_tickets', title: 'Tiket Saya', icon: 'ticket', color: theme.success },
   ] as const;
 
-  const [routes, setRoutes] = React.useState<any[]>([]);
+  const [routes, setRoutes] = useState<any[]>([]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     fetchRoutes();
   }, []);
 
@@ -53,10 +74,10 @@ export default function HomeScreen() {
     }
   };
 
-  const onRefresh = React.useCallback(() => {
+  const onRefresh = useCallback(() => {
     setRefreshing(true);
-    // Refresh routes data
-    fetchRoutes().finally(() => {
+    // Refresh routes data and balance
+    Promise.all([fetchRoutes(), fetchBalance()]).finally(() => {
       setTimeout(() => setRefreshing(false), 1000);
     });
   }, []);
@@ -110,8 +131,27 @@ export default function HomeScreen() {
               <Text style={[styles.locationText, { color: theme.textSecondary }]}>Medan, ID</Text>
             </View>
           </View>
-
         </View>
+
+        {/* Wallet Card */}
+        <TouchableOpacity
+          style={[styles.walletCard, { backgroundColor: theme.primary }]}
+          onPress={() => router.push('/wallet/history')}
+        >
+          <View>
+            <Text style={styles.walletLabel}>Saldo GerakPay</Text>
+            <Text style={styles.walletBalance}>
+              {balance !== null ? formatCurrency(balance) : 'Rp ...'}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.topUpButton}
+            onPress={() => router.push('/wallet/topup')}
+          >
+            <Ionicons name="add-circle" size={24} color={theme.primary} />
+            <Text style={[styles.topUpText, { color: theme.primary }]}>Top Up</Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
 
         {/* Search Bus */}
         <Card style={styles.searchCard}>
@@ -383,5 +423,41 @@ const styles = StyleSheet.create({
   timeText: {
     fontSize: FONT_SIZE.xs,
     fontWeight: '600',
+  },
+  walletCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: SPACING.lg,
+    borderRadius: BORDER_RADIUS.xl,
+    marginBottom: SPACING.xl,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  walletLabel: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: FONT_SIZE.sm,
+    marginBottom: 4,
+  },
+  walletBalance: {
+    color: '#FFF',
+    fontSize: FONT_SIZE.xxl,
+    fontWeight: 'bold',
+  },
+  topUpButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderRadius: BORDER_RADIUS.full,
+    gap: 4,
+  },
+  topUpText: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: 'bold',
   },
 });

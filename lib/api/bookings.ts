@@ -13,6 +13,7 @@ export interface CreateBookingParams {
 }
 
 import { getSnapToken } from '../utils/midtrans';
+import { payWithWallet } from './wallet';
 
 export interface UpdateTransactionParams {
     transactionId: string; // Actually using order_id/transaction_code for lookup
@@ -90,34 +91,53 @@ export const createBooking = async (params: CreateBookingParams) => {
 
     if (transactionError) throw transactionError;
 
-    // 2. Get Snap Token
-    let snapData;
-    let enabledPayments = ['gopay', 'shopeepay', 'qris', 'bank_transfer'];
+    // 2. Process Payment
+    let snapData = { redirect_url: null, token: null };
 
-    // Map selection to specific Snap payment method to skip selection screen if desired
-    if (params.paymentMethod === 'gopay') enabledPayments = ['gopay'];
-    if (params.paymentMethod === 'shopeepay') enabledPayments = ['shopeepay'];
-    if (params.paymentMethod === 'qris') enabledPayments = ['qris'];
+    // CASE A: Wallet Payment
+    if (params.paymentMethod === 'wallet') {
+        try {
+            await payWithWallet(params.userId, params.amount, transactionCode);
+            // If success, update transaction to completed immediately
+            await supabase.from('transactions')
+                .update({ payment_status: 'completed' })
+                .eq('id', transaction.id);
 
-    try {
-        snapData = await getSnapToken({
-            order_id: transactionCode,
-            gross_amount: params.amount,
-            customer_details: {
-                first_name: params.userName,
-                email: params.userEmail
-            },
-            parameter: {
-                enabled_payments: enabledPayments
-            }
-        });
+            // Re-fetch transaction to have latest status if needed, or just proceed
+        } catch (error) {
+            // If wallet payment fails, mark transaction as failed
+            await supabase.from('transactions')
+                .update({ payment_status: 'failed' })
+                .eq('id', transaction.id);
+            throw error;
+        }
+    }
+    // CASE B: Midtrans Payment
+    else {
+        let enabledPayments = ['gopay', 'shopeepay', 'qris', 'bank_transfer'];
 
-        // Update transaction with Midtrans token (optional, or just use it once)
-        // ideally we store the snap token, but for now we just return it
-    } catch (error) {
-        console.error('Failed to get Snap Token:', error);
-        // Clean up transaction if snap fails? Or verify handling
-        throw error;
+        // Map selection to specific Snap payment method to skip selection screen if desired
+        if (params.paymentMethod === 'gopay') enabledPayments = ['gopay'];
+        if (params.paymentMethod === 'shopeepay') enabledPayments = ['shopeepay'];
+        if (params.paymentMethod === 'qris') enabledPayments = ['qris'];
+
+        try {
+            snapData = await getSnapToken({
+                order_id: transactionCode,
+                gross_amount: params.amount,
+                customer_details: {
+                    first_name: params.userName,
+                    email: params.userEmail
+                },
+                parameter: {
+                    enabled_payments: enabledPayments
+                }
+            });
+            // Update midtrans token if needed?
+        } catch (error) {
+            console.error('Failed to get Snap Token:', error);
+            throw error;
+        }
     }
 
     // 3. Create Tickets based on quantity
@@ -129,7 +149,7 @@ export const createBooking = async (params: CreateBookingParams) => {
         ticketsToCreate.push({
             transaction_id: transaction.id,
             valid_until: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-            status: 'active',
+            status: params.paymentMethod === 'wallet' ? 'active' : 'active', // Wallet is instant active, others wait for webhook (but active for now for MVP)
             qr_code_data: `QR-${transactionCode}-${i + 1}-${Math.floor(Math.random() * 10000)}` // Unique QR for each ticket
         });
     }
@@ -142,6 +162,11 @@ export const createBooking = async (params: CreateBookingParams) => {
     if (ticketError) {
         console.error('Ticket creation failed:', ticketError);
         throw ticketError;
+    }
+
+    // Return different structure if wallet
+    if (params.paymentMethod === 'wallet') {
+        return { transaction, tickets, redirect_url: null };
     }
 
     return { transaction, tickets, redirect_url: snapData.redirect_url, token: snapData.token };
