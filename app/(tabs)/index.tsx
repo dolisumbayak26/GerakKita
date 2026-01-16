@@ -34,8 +34,8 @@ export default function HomeScreen() {
   // Quick Actions Data (Dynamic Colors)
   const quickActions = [
     { id: 'search_route', title: 'Info Rute', icon: 'map', color: theme.primary },
-    { id: 'tickets', title: 'Tiket Saya', icon: 'ticket', color: theme.secondary },
-    { id: 'topup', title: 'Top Up', icon: 'wallet', color: theme.success },
+    { id: 'buy_ticket', title: 'Beli Tiket', icon: 'cart', color: theme.secondary },
+    { id: 'my_tickets', title: 'Tiket Saya', icon: 'ticket', color: theme.success },
   ] as const;
 
   const [routes, setRoutes] = React.useState<any[]>([]);
@@ -66,7 +66,8 @@ export default function HomeScreen() {
       key={item.id}
       style={styles.actionItem}
       onPress={() => {
-        if (item.id === 'tickets') router.push('/(tabs)/tickets' as any);
+        if (item.id === 'my_tickets') router.push('/(tabs)/my-tickets' as any);
+        if (item.id === 'buy_ticket') router.push('/(tabs)/buy-ticket' as any);
         if (item.id === 'search_route') router.push('/routes' as any);
       }}
     >
@@ -109,13 +110,7 @@ export default function HomeScreen() {
               <Text style={[styles.locationText, { color: theme.textSecondary }]}>Medan, ID</Text>
             </View>
           </View>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/profile')}>
-            <View style={[styles.avatarPlaceholder, { backgroundColor: theme.card, borderColor: theme.border }]}>
-              <Text style={[styles.avatarText, { color: theme.text }]}>
-                {user?.full_name?.charAt(0).toUpperCase() || 'U'}
-              </Text>
-            </View>
-          </TouchableOpacity>
+
         </View>
 
         {/* Search Bus */}

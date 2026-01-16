@@ -41,6 +41,7 @@ export default function TabLayout() {
         options={{
           title: 'Beli Tiket',
           tabBarIcon: ({ color }) => <Ionicons size={26} name="ticket" color={color} />,
+          href: null, // Hidden from tab bar
         }}
       />
       <Tabs.Screen
@@ -48,6 +49,7 @@ export default function TabLayout() {
         options={{
           title: 'Tiket Saya',
           tabBarIcon: ({ color }) => <Ionicons size={26} name="ticket-outline" color={color} />,
+          href: null, // Hidden from tab bar
         }}
       />
       <Tabs.Screen
