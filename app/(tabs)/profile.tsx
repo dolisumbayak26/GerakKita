@@ -1,27 +1,68 @@
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { pickAndUploadProfileImage } from '@/lib/api/storage';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { useAuthStore } from '@/lib/store/authStore';
 import { BORDER_RADIUS, FONT_SIZE, SPACING } from '@/lib/utils/constants';
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ProfileScreen() {
     const { user, logout } = useAuth();
+    const { setUser } = useAuthStore();
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme ?? 'light'];
+    const [uploading, setUploading] = useState(false);
 
     // Logout handles its own errors and state clearing
     const handleLogout = logout;
 
+    const handleUploadPhoto = async () => {
+        if (!user?.id) return;
+
+        try {
+            setUploading(true);
+            const newImageUrl = await pickAndUploadProfileImage(user.id);
+
+            if (newImageUrl) {
+                // Update local state with new image URL
+                setUser({ ...user, profile_image_url: newImageUrl });
+                Alert.alert('Sukses', 'Foto profil berhasil diperbarui!');
+            }
+        } catch (error: any) {
+            console.error('Upload error:', error);
+            Alert.alert('Gagal', error.message || 'Gagal mengupload foto profil');
+        } finally {
+            setUploading(false);
+        }
+    };
+
     return (
         <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
             <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-                <View style={[styles.avatar, { backgroundColor: theme.primary }]}>
-                    <Text style={styles.avatarText}>
-                        {user?.full_name?.charAt(0).toUpperCase() || 'U'}
-                    </Text>
-                </View>
+                <TouchableOpacity onPress={handleUploadPhoto} disabled={uploading} style={styles.avatarContainer}>
+                    {user?.profile_image_url ? (
+                        <Image
+                            source={{ uri: user.profile_image_url }}
+                            style={styles.avatarImage}
+                        />
+                    ) : (
+                        <View style={[styles.avatar, { backgroundColor: theme.primary }]}>
+                            <Text style={styles.avatarText}>
+                                {user?.full_name?.charAt(0).toUpperCase() || 'U'}
+                            </Text>
+                        </View>
+                    )}
+                    {/* Edit badge */}
+                    <View style={[styles.editBadge, { backgroundColor: theme.primary }]}>
+                        {uploading ? (
+                            <ActivityIndicator size="small" color="#FFF" />
+                        ) : (
+                            <Ionicons name="camera" size={14} color="#FFF" />
+                        )}
+                    </View>
+                </TouchableOpacity>
                 <Text style={[styles.name, { color: theme.text }]}>{user?.full_name || 'User'}</Text>
                 <Text style={[styles.email, { color: theme.textSecondary }]}>{user?.email || ''}</Text>
             </View>
@@ -110,7 +151,27 @@ const styles = StyleSheet.create({
         borderRadius: 40,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    avatarContainer: {
+        position: 'relative',
         marginBottom: SPACING.md,
+    },
+    avatarImage: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+    },
+    editBadge: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
+        borderColor: '#FFF',
     },
     avatarText: {
         fontSize: FONT_SIZE.xxxl,

@@ -29,12 +29,12 @@ export default function PaymentScreen() {
             }
 
             Alert.alert('Pembayaran Berhasil', 'Terima kasih, pembayaran Anda telah dikonfirmasi.', [
-                { text: 'Lihat Tiket', onPress: () => router.replace('/(tabs)/tickets') }
+                { text: 'Lihat Tiket', onPress: () => router.replace('/(tabs)/my-tickets') }
             ]);
         } catch (error) {
             console.error('Update status failed:', error);
             // Still allow navigation
-            router.replace('/(tabs)/tickets');
+            router.replace('/(tabs)/my-tickets');
         } finally {
             setLoading(false);
         }
