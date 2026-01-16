@@ -130,6 +130,14 @@ export default function RoutesScreen() {
                     </TouchableOpacity>
 
                     <TouchableOpacity
+                        onPress={() => router.push({ pathname: '/routes/[id]/map', params: { id: item.id } })}
+                        style={[styles.mapButton, { borderColor: theme.primary, borderWidth: 1 }]}
+                    >
+                        <Ionicons name="map-outline" size={14} color={theme.primary} />
+                        <Text style={[styles.mapButtonText, { color: theme.primary }]}>Peta</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
                         onPress={() => router.push({ pathname: '/booking/confirm', params: { routeId: item.id } })}
                         style={[styles.bookButton, { backgroundColor: theme.primary }]}
                     >
@@ -489,11 +497,24 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: BORDER_RADIUS.full,
-        marginLeft: 'auto', // Push to right
     },
     bookButtonText: {
         fontSize: FONT_SIZE.xs,
         fontWeight: 'bold',
         color: '#FFF',
+    },
+    mapButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: BORDER_RADIUS.full,
+        marginRight: 8,
+        marginLeft: 'auto',
+    },
+    mapButtonText: {
+        fontSize: FONT_SIZE.xs,
+        fontWeight: 'bold',
     },
 });

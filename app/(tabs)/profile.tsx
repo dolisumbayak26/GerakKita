@@ -28,8 +28,8 @@ export default function ProfileScreen() {
             const newImageUrl = await pickAndUploadProfileImage(user.id);
 
             if (newImageUrl) {
-                // Update local state with new image URL
-                setUser({ ...user, profile_image_url: newImageUrl });
+                user.profile_image_url = newImageUrl;
+                setUser({ ...user });
                 Alert.alert('Sukses', 'Foto profil berhasil diperbarui!');
             }
         } catch (error: any) {
@@ -96,6 +96,27 @@ export default function ProfileScreen() {
                     theme={theme}
                 />
             </View>
+
+            {/* Driver Access Button */}
+            {(user as any)?.role === 'driver' && (
+                <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
+                    <TouchableOpacity
+                        style={{
+                            backgroundColor: theme.primary,
+                            paddingVertical: 14,
+                            borderRadius: 12,
+                            flexDirection: 'row',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            gap: 8
+                        }}
+                        onPress={() => router.push('/driver/index' as any)}
+                    >
+                        <Ionicons name="bus" size={20} color="#FFF" />
+                        <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>Mode Pengemudi</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
 
             <TouchableOpacity
                 style={[styles.logoutButton, { backgroundColor: theme.card }]}

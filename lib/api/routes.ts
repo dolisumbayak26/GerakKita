@@ -88,6 +88,19 @@ export const searchRoutes = async (query: string) => {
     return data;
 };
 
+// Get real-time bus locations with distance/ETA using PostGIS
+export const getBusLocations = async (routeId: string, userLat: number, userLon: number) => {
+    const { data, error } = await supabase
+        .rpc('get_route_buses_with_location', {
+            p_route_id: routeId,
+            user_lat: userLat,
+            user_lon: userLon
+        });
+
+    if (error) throw error;
+    return data;
+};
+
 // Helper: Get consistent color for route
 const getRouteColor = (code: string) => {
     const colors = ['#F43F5E', '#8B5CF6', '#10B981', '#F59E0B', '#3B82F6'];
