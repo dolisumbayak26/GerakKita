@@ -124,13 +124,19 @@ export const verifyOtp = async (email: string, token: string) => {
             token,
             type: 'email'
         });
-        if (result.error) throw error; // Throw original error or new error?
+        if (result.error) {
+            // Check for specific error messages and translate them
+            const msg = result.error.message.toLowerCase();
+            if (msg.includes('token has expired') || msg.includes('invalid')) {
+                throw new Error('Kode OTP kedaluwarsa atau salah. Silakan minta kode baru.');
+            }
+            throw result.error;
+        }
+
         // If second attempt succeeds, use that data
         data = result.data;
         error = result.error;
     }
-
-    if (error) throw error;
 
     if (!data.user || !data.session) {
         throw new Error('Verification failed: User or session missing');
