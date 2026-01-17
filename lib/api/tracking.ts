@@ -76,3 +76,24 @@ export async function assignBusToDriver(busId: string, driverId: string) {
         throw error;
     }
 }
+
+/**
+ * Unassigns a driver from a bus.
+ */
+export async function unassignBusDriver(busId: string) {
+    const { error } = await supabase
+        .from('buses')
+        .update({
+            driver_id: null,
+            status: 'available', // Reset status
+            current_latitude: null,
+            current_longitude: null,
+            last_location_update: null // Clear timestamp to prevent ghost data
+        })
+        .eq('id', busId);
+
+    if (error) {
+        console.error('Error unassigning driver from bus:', error);
+        throw error;
+    }
+}

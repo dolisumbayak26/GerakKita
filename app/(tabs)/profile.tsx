@@ -110,7 +110,7 @@ export default function ProfileScreen() {
                             alignItems: 'center',
                             gap: 8
                         }}
-                        onPress={() => router.push('/driver/index' as any)}
+                        onPress={() => router.push('/driver/dashboard' as any)}
                     >
                         <Ionicons name="bus" size={20} color="#FFF" />
                         <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 16 }}>Mode Pengemudi</Text>

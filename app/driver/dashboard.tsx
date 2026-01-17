@@ -1,6 +1,6 @@
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { assignBusToDriver, updateBusLocation } from '@/lib/api/tracking';
+import { assignBusToDriver, unassignBusDriver, updateBusLocation } from '@/lib/api/tracking';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     Alert,
+    Platform,
     SafeAreaView,
     ScrollView,
     StyleSheet,
@@ -28,13 +29,18 @@ export default function DriverDashboard() {
     const [isTracking, setIsTracking] = useState(false);
     const [locationPermission, setLocationPermission] = useState<string | null>(null);
 
+    // Guard to strictly prevent async leaks
+    const isTrackingRef = useRef(false);
     // Use any to avoid NodeJS.Timeout vs number conflicts in RN
     const trackingInterval = useRef<any>(null);
 
     useEffect(() => {
         loadBuses();
         checkPermissions();
-        return () => stopTracking(); // Cleanup on unmount
+        return () => {
+            // Force cleanup on unmount
+            stopTracking();
+        };
     }, []);
 
     const checkPermissions = async () => {
@@ -60,6 +66,8 @@ export default function DriverDashboard() {
     };
 
     const handleStartTrip = async () => {
+        if (isTracking) return; // Prevent double start
+
         if (!selectedBus || !user?.id) {
             Alert.alert('Pilih Bus', 'Silakan pilih bus terlebih dahulu.');
             return;
@@ -73,38 +81,74 @@ export default function DriverDashboard() {
             await assignBusToDriver(selectedBus, user.id);
 
             setIsTracking(true);
+            isTrackingRef.current = true; // Enable guard
+
             Alert.alert('Perjalanan Dimulai', 'Lokasi Anda sekarang sedang disiarkan.');
 
+            // Send initial update immediately
             await sendLocationUpdate();
 
-            trackingInterval.current = setInterval(sendLocationUpdate, 10000);
+            // Start new interval
+            if (trackingInterval.current) clearInterval(trackingInterval.current);
+            const id = setInterval(sendLocationUpdate, 10000);
+            trackingInterval.current = id;
+            console.log('Tracking started with Interval ID:', id);
 
         } catch (error) {
             console.error(error);
             Alert.alert('Error', 'Gagal memulai perjalanan.');
             setIsTracking(false);
+            isTrackingRef.current = false;
+            stopTracking();
         }
     };
 
     const handleStopTrip = async () => {
+        console.log('User pressed Stop.');
+        // 1. Stop tracking locally immediately
         stopTracking();
         setIsTracking(false);
-        Alert.alert('Selesai', 'Perjalanan dihentikan. Lokasi tidak lagi diperbarui.');
-    };
+        isTrackingRef.current = false;
 
-    const stopTracking = () => {
-        if (trackingInterval.current) {
-            clearInterval(trackingInterval.current);
-            trackingInterval.current = null;
+        // 2. Clear from DB
+        if (selectedBus) {
+            const busIdToClear = selectedBus;
+            try {
+                await unassignBusDriver(busIdToClear);
+                Alert.alert('Selesai', 'Perjalanan dihentikan. Anda telah offline.');
+            } catch (error) {
+                console.error("Failed to unassign driver:", error);
+                Alert.alert('Perhatian', 'Gagal mengupdate status offline di server, tapi tracking lokal telah berhenti.');
+            }
+            setSelectedBus(null); // Reset selection
+        } else {
+            Alert.alert('Selesai', 'Tracking dihentikan.');
         }
     };
 
+    const stopTracking = () => {
+        if (trackingInterval.current !== null) {
+            console.log('Clearing Interval ID:', trackingInterval.current);
+            clearInterval(trackingInterval.current);
+            trackingInterval.current = null;
+        }
+        isTrackingRef.current = false;
+    };
+
     const sendLocationUpdate = async () => {
-        if (!selectedBus) return;
+        // Double check tracking state inside the callback using Ref (synchronous)
+        if (!isTrackingRef.current || !selectedBus) {
+            // Silently return to avoid spamming logs
+            return;
+        }
+
         try {
             const location = await Location.getCurrentPositionAsync({
                 accuracy: Location.Accuracy.High
             });
+
+            // Re-check after async wait
+            if (!isTrackingRef.current) return;
 
             console.log('Sending update:', location.coords.latitude, location.coords.longitude);
 
@@ -114,13 +158,14 @@ export default function DriverDashboard() {
                 location.coords.longitude
             );
         } catch (error) {
+            // Only log real errors, not cancellation errors
             console.log('Location update failed:', error);
         }
     };
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-            <View style={styles.header}>
+            <View style={[styles.header, { paddingTop: Platform.OS === 'android' ? 40 : 0 }]}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                     <Ionicons name="close" size={24} color={theme.text} />
                 </TouchableOpacity>
@@ -197,7 +242,7 @@ export default function DriverDashboard() {
                         style={[styles.actionButton, { backgroundColor: theme.error }]}
                         onPress={handleStopTrip}
                     >
-                        <Text style={styles.actionButtonText}>Selesai / Berhenti</Text>
+                        <Text style={styles.actionButtonText}>Berhenti & Offline</Text>
                     </TouchableOpacity>
                 )}
             </View>

@@ -28,7 +28,7 @@ export default function DriverLayout() {
 
     return (
         <Stack>
-            <Stack.Screen name="index" options={{ title: 'Driver Dashboard', headerShown: false }} />
+            <Stack.Screen name="dashboard" options={{ title: 'Driver Dashboard', headerShown: false }} />
         </Stack>
     );
 }
