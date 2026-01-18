@@ -1,12 +1,13 @@
 import { Card } from '@/components/common/Card';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { getRoutes } from '@/lib/api/routes';
+import { getAllBusStops, getRoutes } from '@/lib/api/routes';
 import { getWalletBalance } from '@/lib/api/wallet';
 import { useAuthStore } from '@/lib/store/authStore';
 import { BORDER_RADIUS, FONT_SIZE, SPACING } from '@/lib/utils/constants';
 import { formatCurrency } from '@/lib/utils/formatters';
 import { Ionicons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -23,6 +24,14 @@ import {
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 
+interface NearestStop {
+  id: string;
+  name: string;
+  distance: number; // in meters
+  latitude: number;
+  longitude: number;
+}
+
 const { height } = Dimensions.get('window');
 // Dynamic padding based on screen height (Responsive)
 const SCREEN_PADDING = height > 800 ? SPACING.xl : SPACING.lg;
@@ -34,6 +43,9 @@ export default function HomeScreen() {
   const theme = Colors[colorScheme ?? 'light'];
   const [refreshing, setRefreshing] = useState(false);
   const [balance, setBalance] = useState<number | null>(null);
+  const [location, setLocation] = useState<Location.LocationObject | null>(null);
+  const [nearestStop, setNearestStop] = useState<NearestStop | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Focus effect to reload balance when returning to home
   useFocusEffect(
@@ -63,7 +75,64 @@ export default function HomeScreen() {
 
   useEffect(() => {
     fetchRoutes();
+    (async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setErrorMsg('Permission to access location was denied');
+        return;
+      }
+
+      let location = await Location.getCurrentPositionAsync({});
+      setLocation(location);
+      findNearestStop(location.coords.latitude, location.coords.longitude);
+    })();
   }, []);
+
+  const findNearestStop = async (lat: number, lon: number) => {
+    try {
+      const stops = await getAllBusStops();
+      if (!stops) return;
+
+      let minDistance = Infinity;
+      let nearest: NearestStop | null = null;
+
+      stops.forEach((stop: any) => {
+        const distance = getDistanceFromLatLonInKm(lat, lon, stop.latitude, stop.longitude) * 1000; // Convert to meters
+        if (distance < minDistance) {
+          minDistance = distance;
+          nearest = {
+            id: stop.id,
+            name: stop.name,
+            distance: Math.round(distance),
+            latitude: stop.latitude,
+            longitude: stop.longitude,
+          };
+        }
+      });
+
+      setNearestStop(nearest);
+    } catch (error) {
+      console.error('Error finding nearest stop:', error);
+    }
+  };
+
+  // Haversine formula
+  const getDistanceFromLatLonInKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    var R = 6371; // Radius of the earth in km
+    var dLat = deg2rad(lat2 - lat1);
+    var dLon = deg2rad(lon2 - lon1);
+    var a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    var d = R * c; // Distance in km
+    return d;
+  }
+
+  const deg2rad = (deg: number) => {
+    return deg * (Math.PI / 180);
+  }
 
   const fetchRoutes = async () => {
     try {
@@ -181,8 +250,13 @@ export default function HomeScreen() {
               <MapView
                 provider={PROVIDER_GOOGLE}
                 style={StyleSheet.absoluteFillObject}
-                initialRegion={{
-                  latitude: 3.5952, // Medan coordinates
+                region={location ? {
+                  latitude: location.coords.latitude,
+                  longitude: location.coords.longitude,
+                  latitudeDelta: 0.005,
+                  longitudeDelta: 0.005,
+                } : {
+                  latitude: 3.5952, // Default Medan
                   longitude: 98.6722,
                   latitudeDelta: 0.005,
                   longitudeDelta: 0.005,
@@ -190,20 +264,44 @@ export default function HomeScreen() {
                 scrollEnabled={false}
                 zoomEnabled={false}
               >
-                <Marker
-                  coordinate={{ latitude: 3.5952, longitude: 98.6722 }}
-                  title="Halte Unpri"
-                >
-                  <View style={[styles.markerContainer, { backgroundColor: theme.primary }]}>
-                    <Ionicons name="bus" size={14} color="#FFF" />
-                  </View>
-                </Marker>
+                {/* User Location Marker */}
+                {location && (
+                  <Marker
+                    coordinate={{
+                      latitude: location.coords.latitude,
+                      longitude: location.coords.longitude
+                    }}
+                    title="Lokasi Anda"
+                  >
+                    <View style={[styles.markerContainer, { backgroundColor: '#3B82F6', borderColor: '#FFF' }]}>
+                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFF' }} />
+                    </View>
+                  </Marker>
+                )}
+
+                {/* Nearest Stop Marker */}
+                {nearestStop && (
+                  <Marker
+                    coordinate={{ latitude: nearestStop.latitude, longitude: nearestStop.longitude }}
+                    title={nearestStop.name}
+                  >
+                    <View style={[styles.markerContainer, { backgroundColor: theme.primary }]}>
+                      <Ionicons name="bus" size={14} color="#FFF" />
+                    </View>
+                  </Marker>
+                )}
               </MapView>
             </View>
             <View style={styles.nearbyInfo}>
               <View>
-                <Text style={[styles.stopName, { color: theme.text }]}>Halte Unpri </Text>
-                <Text style={[styles.stopDistance, { color: theme.textSecondary }]}>200m • Jalan kaki 3 menit</Text>
+                <Text style={[styles.stopName, { color: theme.text }]}>
+                  {nearestStop ? nearestStop.name : 'Mencari halte terdekat...'}
+                </Text>
+                <Text style={[styles.stopDistance, { color: theme.textSecondary }]}>
+                  {nearestStop
+                    ? `${nearestStop.distance}m • Jalan kaki ${~~(nearestStop.distance / 1.4 / 60)} menit`
+                    : 'Mohon aktifkan lokasi'}
+                </Text>
               </View>
               <TouchableOpacity style={[styles.directionButton, { backgroundColor: theme.primary }]}>
                 <Ionicons name="navigate" size={20} color="#FFF" />

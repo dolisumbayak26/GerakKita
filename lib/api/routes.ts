@@ -107,3 +107,13 @@ const getRouteColor = (code: string) => {
     const index = code.charCodeAt(0) % colors.length;
     return colors[index];
 };
+
+// Fetch all bus stops
+export const getAllBusStops = async () => {
+    const { data, error } = await supabase
+        .from('bus_stops')
+        .select('id, name, latitude, longitude, address');
+
+    if (error) throw error;
+    return data;
+};
