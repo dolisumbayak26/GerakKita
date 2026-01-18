@@ -52,6 +52,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="reviews"
+        options={{
+          title: 'Ulasan',
+          tabBarIcon: ({ color }) => <Ionicons size={26} name="star" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="my-tickets"
         options={{
           title: 'Tiket Saya',

@@ -157,16 +157,29 @@ export default function DriverDashboard() {
                 location.coords.latitude,
                 location.coords.longitude
             );
-        } catch (error) {
-            // Only log real errors, not cancellation errors
-            console.log('Location update failed:', error);
+        } catch (error: any) {
+            // Log error but DON'T stop tracking - network issues are temporary
+            console.log('Location update failed (will retry):', error?.message || error);
+            // Continue tracking - the next interval will try again
+        }
+    };
+
+    const handleBackPress = () => {
+        if (isTracking) {
+            Alert.alert(
+                'Perjalanan Masih Aktif',
+                'Anda masih dalam mode pengemudi. Hentikan perjalanan terlebih dahulu sebelum keluar.',
+                [{ text: 'OK' }]
+            );
+        } else {
+            router.back();
         }
     };
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
             <View style={[styles.header, { paddingTop: Platform.OS === 'android' ? 40 : 0 }]}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
                     <Ionicons name="close" size={24} color={theme.text} />
                 </TouchableOpacity>
                 <Text style={[styles.title, { color: theme.text }]}>Panel Pengemudi</Text>

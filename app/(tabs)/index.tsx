@@ -12,6 +12,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Dimensions,
+  Linking,
   Platform,
   RefreshControl,
   SafeAreaView,
@@ -168,6 +169,28 @@ export default function HomeScreen() {
     </TouchableOpacity>
   );
 
+  const handleOpenMap = () => {
+    if (!nearestStop || !location) return;
+
+    router.push({
+      pathname: '/map',
+      params: {
+        userLat: location.coords.latitude,
+        userLon: location.coords.longitude,
+        destLat: nearestStop.latitude,
+        destLon: nearestStop.longitude,
+        destName: nearestStop.name,
+        destAddress: nearestStop.name // or address if available
+      }
+    } as any);
+  };
+
+  const handleNavigate = () => {
+    if (!nearestStop) return;
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${nearestStop.latitude},${nearestStop.longitude}`;
+    Linking.openURL(url);
+  };
+
   return (
     <SafeAreaView style={[
       styles.container,
@@ -246,52 +269,55 @@ export default function HomeScreen() {
           <Text style={[styles.sectionTitle, { color: theme.text }]}>Halte Terdekat</Text>
           <Card style={styles.nearbyCard} padding={0}>
             {/* Replaced placeholder with MapView */}
-            <View style={styles.mapContainer}>
-              <MapView
-                provider={PROVIDER_GOOGLE}
-                style={StyleSheet.absoluteFillObject}
-                region={location ? {
-                  latitude: location.coords.latitude,
-                  longitude: location.coords.longitude,
-                  latitudeDelta: 0.005,
-                  longitudeDelta: 0.005,
-                } : {
-                  latitude: 3.5952, // Default Medan
-                  longitude: 98.6722,
-                  latitudeDelta: 0.005,
-                  longitudeDelta: 0.005,
-                }}
-                scrollEnabled={false}
-                zoomEnabled={false}
-              >
-                {/* User Location Marker */}
-                {location && (
-                  <Marker
-                    coordinate={{
-                      latitude: location.coords.latitude,
-                      longitude: location.coords.longitude
-                    }}
-                    title="Lokasi Anda"
-                  >
-                    <View style={[styles.markerContainer, { backgroundColor: '#3B82F6', borderColor: '#FFF' }]}>
-                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFF' }} />
-                    </View>
-                  </Marker>
-                )}
+            <TouchableOpacity onPress={handleOpenMap} activeOpacity={0.9}>
+              <View style={styles.mapContainer}>
+                <MapView
+                  provider={PROVIDER_GOOGLE}
+                  style={StyleSheet.absoluteFillObject}
+                  region={location ? {
+                    latitude: location.coords.latitude,
+                    longitude: location.coords.longitude,
+                    latitudeDelta: 0.005,
+                    longitudeDelta: 0.005,
+                  } : {
+                    latitude: 3.5952, // Default Medan
+                    longitude: 98.6722,
+                    latitudeDelta: 0.005,
+                    longitudeDelta: 0.005,
+                  }}
+                  scrollEnabled={false}
+                  zoomEnabled={false}
+                  onPress={handleOpenMap} // Ensure map clicks also trigger it
+                >
+                  {/* User Location Marker */}
+                  {location && (
+                    <Marker
+                      coordinate={{
+                        latitude: location.coords.latitude,
+                        longitude: location.coords.longitude
+                      }}
+                      title="Lokasi Anda"
+                    >
+                      <View style={[styles.markerContainer, { backgroundColor: '#3B82F6', borderColor: '#FFF' }]}>
+                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFF' }} />
+                      </View>
+                    </Marker>
+                  )}
 
-                {/* Nearest Stop Marker */}
-                {nearestStop && (
-                  <Marker
-                    coordinate={{ latitude: nearestStop.latitude, longitude: nearestStop.longitude }}
-                    title={nearestStop.name}
-                  >
-                    <View style={[styles.markerContainer, { backgroundColor: theme.primary }]}>
-                      <Ionicons name="bus" size={14} color="#FFF" />
-                    </View>
-                  </Marker>
-                )}
-              </MapView>
-            </View>
+                  {/* Nearest Stop Marker */}
+                  {nearestStop && (
+                    <Marker
+                      coordinate={{ latitude: nearestStop.latitude, longitude: nearestStop.longitude }}
+                      title={nearestStop.name}
+                    >
+                      <View style={[styles.markerContainer, { backgroundColor: theme.primary }]}>
+                        <Ionicons name="bus" size={14} color="#FFF" />
+                      </View>
+                    </Marker>
+                  )}
+                </MapView>
+              </View>
+            </TouchableOpacity>
             <View style={styles.nearbyInfo}>
               <View>
                 <Text style={[styles.stopName, { color: theme.text }]}>
@@ -303,7 +329,10 @@ export default function HomeScreen() {
                     : 'Mohon aktifkan lokasi'}
                 </Text>
               </View>
-              <TouchableOpacity style={[styles.directionButton, { backgroundColor: theme.primary }]}>
+              <TouchableOpacity
+                style={[styles.directionButton, { backgroundColor: theme.primary }]}
+                onPress={handleNavigate}
+              >
                 <Ionicons name="navigate" size={20} color="#FFF" />
               </TouchableOpacity>
             </View>
