@@ -3,7 +3,7 @@
 export interface Database {
     public: {
         Tables: {
-            users: {
+            customers: {
                 Row: {
                     id: string;
                     email: string | null;
@@ -31,6 +31,38 @@ export interface Database {
                     full_name?: string;
                     profile_image_url?: string | null;
                     encrypted_pin?: string | null;
+                    created_at?: string;
+                    updated_at?: string;
+                };
+            };
+            drivers: {
+                Row: {
+                    id: string;
+                    email: string | null;
+                    phone_number: string | null;
+                    full_name: string;
+                    profile_image_url: string | null;
+                    bus_id: string | null;
+                    created_at: string;
+                    updated_at: string;
+                };
+                Insert: {
+                    id: string;
+                    email?: string | null;
+                    phone_number?: string | null;
+                    full_name: string;
+                    profile_image_url?: string | null;
+                    bus_id?: string | null;
+                    created_at?: string;
+                    updated_at?: string;
+                };
+                Update: {
+                    id?: string;
+                    email?: string | null;
+                    phone_number?: string | null;
+                    full_name?: string;
+                    profile_image_url?: string | null;
+                    bus_id?: string | null;
                     created_at?: string;
                     updated_at?: string;
                 };
@@ -163,7 +195,7 @@ export interface Database {
                     status: 'pending' | 'success' | 'failed';
                     created_at: string;
                 };
-                Insert: {                                       
+                Insert: {
                     id?: string;
                     wallet_id: string;
                     amount: number;
@@ -188,8 +220,14 @@ export interface Database {
     };
 }
 
-// User type
-export type User = Database['public']['Tables']['users']['Row'];
+// Customer type
+export type Customer = Database['public']['Tables']['customers']['Row'];
+
+// Driver type
+export type Driver = Database['public']['Tables']['drivers']['Row'];
+
+// Unified User type for backward compatibility (can be either customer or driver)
+export type User = (Customer & { user_type: 'customer' }) | (Driver & { user_type: 'driver' });
 
 // Bus Stop type
 export type BusStop = Database['public']['Tables']['bus_stops']['Row'];
@@ -237,4 +275,13 @@ export interface RegisterData {
     password: string;
     full_name: string;
     phone_number?: string;
+}
+
+// Type guards
+export function isDriver(user: User | Customer | Driver): user is Driver & { user_type: 'driver' } {
+    return 'bus_id' in user || (user as any).user_type === 'driver';
+}
+
+export function isCustomer(user: User | Customer | Driver): user is Customer & { user_type: 'customer' } {
+    return 'encrypted_pin' in user || (user as any).user_type === 'customer';
 }

@@ -1,9 +1,12 @@
+import { PulsingMarker } from '@/components/map/PulsingMarker';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { getAllBusStops } from '@/lib/api/routes';
 import { Ionicons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useRef } from 'react';
-import { Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Linking, Platform, SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 
 export default function MapScreen() {
@@ -22,21 +25,63 @@ export default function MapScreen() {
         destAddress
     } = params;
 
+    const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
+    const [allBusStops, setAllBusStops] = useState<any[]>([]);
+
     useEffect(() => {
-        if (mapRef.current && userLat && destLat) {
-            // Fit to coordinates with padding
-            mapRef.current.fitToCoordinates(
-                [
-                    { latitude: parseFloat(userLat as string), longitude: parseFloat(userLon as string) },
-                    { latitude: parseFloat(destLat as string), longitude: parseFloat(destLon as string) }
-                ],
-                {
-                    edgePadding: { top: 100, right: 50, bottom: 50, left: 50 },
-                    animated: true,
+        loadBusStops();
+        (async () => {
+            let { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                console.error('Permission to access location was denied');
+                return;
+            }
+
+            let location = await Location.getCurrentPositionAsync({});
+            setUserLocation(location);
+
+            if (mapRef.current) {
+                const coordinates = [];
+                if (location) {
+                    coordinates.push({ latitude: location.coords.latitude, longitude: location.coords.longitude });
+                } else if (userLat && userLon) {
+                    coordinates.push({ latitude: parseFloat(userLat as string), longitude: parseFloat(userLon as string) });
                 }
-            );
-        }
+
+                if (destLat && destLon) {
+                    coordinates.push({ latitude: parseFloat(destLat as string), longitude: parseFloat(destLon as string) });
+                }
+
+                if (coordinates.length > 0) {
+                    mapRef.current.fitToCoordinates(
+                        coordinates,
+                        {
+                            edgePadding: { top: 100, right: 50, bottom: 50, left: 50 },
+                            animated: true,
+                        }
+                    );
+                }
+            }
+        })();
     }, [userLat, destLat]);
+
+    const loadBusStops = async () => {
+        try {
+            const stops = await getAllBusStops();
+            if (stops) {
+                setAllBusStops(stops);
+            }
+        } catch (error) {
+            console.error('Error loading bus stops:', error);
+        }
+    };
+
+    const openGoogleMaps = () => {
+        if (destLat && destLon) {
+            const url = `https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLon}&travelmode=driving`;
+            Linking.openURL(url).catch(err => console.error("Couldn't open Google Maps", err));
+        }
+    };
 
     return (
         <View style={styles.container}>
@@ -48,27 +93,45 @@ export default function MapScreen() {
                 provider={PROVIDER_GOOGLE}
                 style={StyleSheet.absoluteFillObject}
                 initialRegion={{
-                    latitude: parseFloat(userLat as string) || 3.5952,
-                    longitude: parseFloat(userLon as string) || 98.6722,
+                    latitude: userLocation?.coords.latitude || parseFloat(userLat as string) || 3.5952,
+                    longitude: userLocation?.coords.longitude || parseFloat(userLon as string) || 98.6722,
                     latitudeDelta: 0.01,
                     longitudeDelta: 0.01,
                 }}
             >
-                {/* User Marker */}
-                {userLat && (
+                {/* User Location with Pulse */}
+                {userLocation && (
                     <Marker
                         coordinate={{
-                            latitude: parseFloat(userLat as string),
-                            longitude: parseFloat(userLon as string)
+                            latitude: userLocation.coords.latitude,
+                            longitude: userLocation.coords.longitude
                         }}
                         title="Lokasi Anda"
                         anchor={{ x: 0.5, y: 0.5 }}
                     >
-                        <View style={styles.userMarkerOutline}>
-                            <View style={styles.userMarkerCore} />
-                        </View>
+                        <PulsingMarker size={24} color={theme.primary} />
                     </Marker>
                 )}
+
+                {/* All Bus Stops */}
+                {allBusStops.map((stop) => (
+                    <Marker
+                        key={stop.id}
+                        coordinate={{
+                            latitude: parseFloat(stop.latitude),
+                            longitude: parseFloat(stop.longitude)
+                        }}
+                        title={stop.name}
+                        description={stop.address}
+                    >
+                        <View style={[styles.busStopMarker, {
+                            backgroundColor: '#90EE90', // Light green
+                            borderColor: '#FFF'
+                        }]}>
+                            <Ionicons name="bus" size={14} color="#FFF" />
+                        </View>
+                    </Marker>
+                ))}
 
                 {/* Destination Marker */}
                 {destLat && (
@@ -80,9 +143,8 @@ export default function MapScreen() {
                         title={destName as string}
                         description={destAddress as string}
                     >
-                        <View style={[styles.stopMarkerContainer, { backgroundColor: theme.primary }]}>
-                            <Ionicons name="bus" size={20} color="#FFF" />
-                            <View style={[styles.stopMarkerArrow, { borderTopColor: theme.primary }]} />
+                        <View style={[styles.destinationMarker, { backgroundColor: theme.error }]}>
+                            <Ionicons name="location" size={20} color="#FFF" />
                         </View>
                     </Marker>
                 )}
@@ -97,14 +159,23 @@ export default function MapScreen() {
             </TouchableOpacity>
 
             {/* Title Card */}
-            <View style={[styles.infoCard, { backgroundColor: theme.card }]}>
+            <SafeAreaView style={[styles.infoCard, { backgroundColor: theme.card }]}>
                 <View>
                     <Text style={[styles.infoTitle, { color: theme.text }]}>{destName || 'Peta'}</Text>
                     <Text style={[styles.infoSubtitle, { color: theme.textSecondary }]}>
                         {destAddress || 'Menampilkan lokasi'}
                     </Text>
                 </View>
-            </View>
+                {destLat && (
+                    <TouchableOpacity
+                        style={[styles.navigateButton, { backgroundColor: theme.primary }]}
+                        onPress={openGoogleMaps}
+                    >
+                        <Ionicons name="navigate-circle-outline" size={24} color="#FFF" />
+                        <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Navigasi</Text>
+                    </TouchableOpacity>
+                )}
+            </SafeAreaView>
         </View>
     );
 }
@@ -170,7 +241,7 @@ const styles = StyleSheet.create({
         borderRightColor: 'transparent',
         position: 'absolute',
         bottom: -8,
-        // We can't dynamically set borderTopColor easily in StyleSheet, 
+        // We can't dynamically set borderTopColor easily in StyleSheet,
         // will rely on marker container background matching or use inline style for arrow if needed.
         // For simplicity, hardcode distinct color or better, use View style override in render
         borderTopColor: '#3B82F6',
@@ -200,6 +271,9 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
     },
     infoTitle: {
         fontSize: 18,
@@ -208,5 +282,39 @@ const styles = StyleSheet.create({
     },
     infoSubtitle: {
         fontSize: 14,
-    }
+    },
+    busStopMarker: {
+        padding: 6,
+        borderRadius: 20,
+        borderWidth: 2,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    destinationMarker: {
+        padding: 10,
+        borderRadius: 25,
+        borderWidth: 3,
+        borderColor: '#FFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4.65,
+        elevation: 7,
+    },
+    navigateButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        borderRadius: 12,
+        gap: 8,
+        marginTop: 12,
+    },
 });

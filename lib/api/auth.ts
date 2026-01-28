@@ -13,7 +13,7 @@ export const login = async (credentials: LoginCredentials) => {
     return data;
 };
 
-// Register new user
+// Register new user (customers only - drivers created by admin)
 export const register = async (userData: RegisterData) => {
     // 1. Create auth user with metadata
     const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -33,19 +33,19 @@ export const register = async (userData: RegisterData) => {
     // 2. Wait for trigger to create profile (if trigger exists)
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // 3. Check if profile exists
+    // 3. Check if profile exists in customers table
     let { data: profileData, error: profileError } = await supabase
-        .from('users')
+        .from('customers')
         .select('*')
         .eq('id', authData.user.id)
         .single();
 
     // 4. If profile doesn't exist, create it manually (fallback)
     if (profileError || !profileData) {
-        console.log('Trigger not found, creating profile manually...');
+        console.log('Trigger not found, creating customer profile manually...');
 
         const { data: newProfile, error: insertError } = await supabase
-            .from('users')
+            .from('customers')
             .insert({
                 id: authData.user.id,
                 email: userData.email,
@@ -56,15 +56,14 @@ export const register = async (userData: RegisterData) => {
             .single();
 
         if (insertError) {
-            // If still fails, it might be RLS issue - user needs to enable trigger
-            console.error('Failed to create profile:', insertError);
+            console.error('Failed to create customer profile:', insertError);
             throw new Error('Profile creation failed. Please contact support.');
         }
 
         profileData = newProfile;
     }
 
-    return { user: authData.user, profile: profileData };
+    return { user: authData.user, profile: { ...profileData, user_type: 'customer' as const } };
 };
 
 // Logout
@@ -80,16 +79,32 @@ export const getSession = async () => {
     return data.session;
 };
 
-// Get user profile
+// Get user profile - checks both customers and drivers tables
 export const getUserProfile = async (userId: string): Promise<User> => {
-    const { data, error } = await supabase
-        .from('users')
+    // First, try to find user in customers table
+    const { data: customerData, error: customerError } = await supabase
+        .from('customers')
         .select('*')
         .eq('id', userId)
         .single();
 
-    if (error) throw error;
-    return data;
+    if (customerData && !customerError) {
+        return { ...customerData, user_type: 'customer' as const };
+    }
+
+    // If not found in customers, try drivers table
+    const { data: driverData, error: driverError } = await supabase
+        .from('drivers')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+    if (driverData && !driverError) {
+        return { ...driverData, user_type: 'driver' as const };
+    }
+
+    // If not found in either table, throw error
+    throw new Error('User profile not found');
 };
 
 // Update user profile
@@ -97,15 +112,33 @@ export const updateUserProfile = async (
     userId: string,
     updates: Partial<User>
 ) => {
-    const { data, error } = await supabase
-        .from('users')
-        .update(updates)
-        .eq('id', userId)
-        .select()
-        .single();
+    // Determine which table to update by checking current user
+    const currentUser = await getUserProfile(userId);
 
-    if (error) throw error;
-    return data;
+    if (currentUser.user_type === 'customer') {
+        // Update customers table
+        const { data, error } = await supabase
+            .from('customers')
+            .update(updates)
+            .eq('id', userId)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return { ...data, user_type: 'customer' as const };
+    } else {
+        // Update drivers table (exclude encrypted_pin as drivers don't have it)
+        const { encrypted_pin, ...driverUpdates } = updates as any;
+        const { data, error } = await supabase
+            .from('drivers')
+            .update(driverUpdates)
+            .eq('id', userId)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return { ...data, user_type: 'driver' as const };
+    }
 };
 
 // Verify OTP

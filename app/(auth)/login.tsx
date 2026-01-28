@@ -45,9 +45,22 @@ export default function LoginScreen() {
 
         setLoading(true);
         try {
-            await login({ email, password });
-            // Navigation will be handled by auth state change
-            router.replace('/(tabs)');
+            const authData = await login({ email, password });
+
+            // Get user profile to determine user type
+            if (authData.user) {
+                const { getUserProfile } = await import('../../lib/api/auth');
+                const userProfile = await getUserProfile(authData.user.id);
+
+                // Redirect based on user type
+                if (userProfile.user_type === 'driver') {
+                    router.replace('/(driver-tabs)/index' as any);
+                } else {
+                    router.replace('/(tabs)');
+                }
+            } else {
+                router.replace('/(tabs)');
+            }
         } catch (error: any) {
             Alert.alert(
                 'Login Gagal',
@@ -100,14 +113,12 @@ export default function LoginScreen() {
                         error={errors.password}
                     />
 
-                    {/* Forgot Password - Will be implemented later
                     <TouchableOpacity
-                        onPress={() => {}}
+                        onPress={() => router.push('/forgot-password')}
                         style={styles.forgotPassword}
                     >
                         <Text style={styles.forgotPasswordText}>Lupa Password?</Text>
                     </TouchableOpacity>
-                    */}
 
                     <Button
                         title="Login"

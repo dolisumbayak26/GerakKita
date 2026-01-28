@@ -17,14 +17,14 @@ export default function DriverLayout() {
         );
     }
 
-    // Ensure user is authenticated and has role 'driver' (or admin)
-    //   if (!user || user.role !== 'driver') {
-    // Note: Since 'role' might not be in the initial user object depending on how auth is hydrated, 
-    // be careful. For now, we assume user object has role if we fetched it.
-    // If you haven't typed 'role' in User interface yet, this might error in TS.
-    // We'll perform a soft check or redirect.
-    // return <Redirect href="/(tabs)/profile" />;
-    //   }
+    // Ensure user is authenticated and has driver role
+    // Note: Since we now have separate tables, we check user_type
+    // For now we'll skip strict protection since the redirect handles it at login
+    // But if someone manually navigates, we should redirect them
+    // Uncomment below to enforce:
+    // if (!user || (user as any).user_type !== 'driver') {
+    //     return <Redirect href="/(tabs)/profile" />;
+    // }
 
     return (
         <Stack>

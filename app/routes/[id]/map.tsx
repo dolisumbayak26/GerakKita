@@ -215,8 +215,8 @@ export default function RouteMapScreen() {
                             title={stop.bus_stops.name}
                             description={`Halte ke-${index + 1}`}
                         >
-                            <View style={[styles.stopMarker, { backgroundColor: '#FFF', borderColor: theme.primary }]}>
-                                <View style={[styles.stopDot, { backgroundColor: theme.primary }]} />
+                            <View style={[styles.stopMarker, { backgroundColor: '#90EE90', borderColor: '#FFF' }]}>
+                                <Ionicons name="bus" size={10} color="#FFF" />
                             </View>
                         </Marker>
                     );
@@ -314,12 +314,16 @@ const styles = StyleSheet.create({
         marginTop: 2,
     },
     stopMarker: {
-        width: 16,
-        height: 16,
-        borderRadius: 8,
+        padding: 6,
+        borderRadius: 20,
         borderWidth: 2,
         justifyContent: 'center',
         alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
     },
     stopDot: {
         width: 6,

@@ -60,31 +60,13 @@ export async function updateBusLocation(
 }
 
 /**
- * Assigns a driver to a bus.
+ * Clears a bus's location data when driver stops tracking.
+ * No longer needs to unassign driver since we use drivers.bus_id now.
  */
-export async function assignBusToDriver(busId: string, driverId: string) {
+export async function clearBusLocation(busId: string) {
     const { error } = await supabase
         .from('buses')
         .update({
-            driver_id: driverId,
-            status: 'available', // Use 'available' to match check constraint of the database
-        })
-        .eq('id', busId);
-
-    if (error) {
-        console.error('Error assigning driver to bus:', error);
-        throw error;
-    }
-}
-
-/**
- * Unassigns a driver from a bus.
- */
-export async function unassignBusDriver(busId: string) {
-    const { error } = await supabase
-        .from('buses')
-        .update({
-            driver_id: null,
             status: 'available', // Reset status
             current_latitude: null,
             current_longitude: null,
@@ -93,7 +75,7 @@ export async function unassignBusDriver(busId: string) {
         .eq('id', busId);
 
     if (error) {
-        console.error('Error unassigning driver from bus:', error);
+        console.error('Error clearing bus location:', error);
         throw error;
     }
 }

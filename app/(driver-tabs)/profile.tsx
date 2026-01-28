@@ -84,12 +84,6 @@ export default function ProfileScreen() {
                     theme={theme}
                 />
                 <MenuItem
-                    icon="key-outline"
-                    title="Ubah Password"
-                    onPress={() => router.push('/profile/change-password')}
-                    theme={theme}
-                />
-                <MenuItem
                     icon="chatbubble-ellipses-outline"
                     title="Pusat Bantuan"
                     onPress={() => router.push('/profile/help-center')}

@@ -1,4 +1,5 @@
 import { Card } from '@/components/common/Card';
+import { PulsingMarker } from '@/components/map/PulsingMarker';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getAllBusStops, getRoutes } from '@/lib/api/routes';
@@ -46,6 +47,7 @@ export default function HomeScreen() {
   const [balance, setBalance] = useState<number | null>(null);
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [nearestStop, setNearestStop] = useState<NearestStop | null>(null);
+  const [allBusStops, setAllBusStops] = useState<any[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Focus effect to reload balance when returning to home
@@ -76,6 +78,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     fetchRoutes();
+    loadAllBusStops();
     (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
@@ -88,6 +91,17 @@ export default function HomeScreen() {
       findNearestStop(location.coords.latitude, location.coords.longitude);
     })();
   }, []);
+
+  const loadAllBusStops = async () => {
+    try {
+      const stops = await getAllBusStops();
+      if (stops) {
+        setAllBusStops(stops);
+      }
+    } catch (error) {
+      console.error('Error loading bus stops:', error);
+    }
+  };
 
   const findNearestStop = async (lat: number, lon: number) => {
     try {
@@ -289,7 +303,7 @@ export default function HomeScreen() {
                   zoomEnabled={false}
                   onPress={handleOpenMap} // Ensure map clicks also trigger it
                 >
-                  {/* User Location Marker */}
+                  {/* User Location Marker with Pulse */}
                   {location && (
                     <Marker
                       coordinate={{
@@ -297,24 +311,31 @@ export default function HomeScreen() {
                         longitude: location.coords.longitude
                       }}
                       title="Lokasi Anda"
+                      anchor={{ x: 0.5, y: 0.5 }}
                     >
-                      <View style={[styles.markerContainer, { backgroundColor: '#3B82F6', borderColor: '#FFF' }]}>
-                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFF' }} />
-                      </View>
+                      <PulsingMarker size={20} color={theme.primary} />
                     </Marker>
                   )}
 
-                  {/* Nearest Stop Marker */}
-                  {nearestStop && (
+                  {/* All Bus Stops Markers */}
+                  {allBusStops.map((stop) => (
                     <Marker
-                      coordinate={{ latitude: nearestStop.latitude, longitude: nearestStop.longitude }}
-                      title={nearestStop.name}
+                      key={stop.id}
+                      coordinate={{
+                        latitude: parseFloat(stop.latitude),
+                        longitude: parseFloat(stop.longitude)
+                      }}
+                      title={stop.name}
+                      description={stop.address}
                     >
-                      <View style={[styles.markerContainer, { backgroundColor: theme.primary }]}>
-                        <Ionicons name="bus" size={14} color="#FFF" />
+                      <View style={[styles.busStopMarker, {
+                        backgroundColor: nearestStop?.id === stop.id ? theme.primary : '#90EE90',
+                        borderColor: '#FFF'
+                      }]}>
+                        <Ionicons name="bus" size={12} color="#FFF" />
                       </View>
                     </Marker>
-                  )}
+                  ))}
                 </MapView>
               </View>
             </TouchableOpacity>
@@ -492,6 +513,18 @@ const styles = StyleSheet.create({
     borderColor: '#FFF',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  busStopMarker: {
+    padding: 6,
+    borderRadius: BORDER_RADIUS.full,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   nearbyInfo: {
     padding: SPACING.md,
