@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -14,7 +13,7 @@ import {
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { login } from '../../lib/api/auth';
-import { BORDER_RADIUS, COLORS, FONT_SIZE, SPACING } from '../../lib/utils/constants';
+import { COLORS, FONT_SIZE, SPACING } from '../../lib/utils/constants';
 import { validateEmail } from '../../lib/utils/validators';
 
 export default function LoginScreen() {
@@ -128,23 +127,6 @@ export default function LoginScreen() {
                         style={styles.loginButton}
                     />
 
-                    <View style={styles.divider}>
-                        <View style={styles.dividerLine} />
-                        <Text style={styles.dividerText}>atau lanjutkan dengan</Text>
-                        <View style={styles.dividerLine} />
-                    </View>
-
-                    <View style={styles.socialButtons}>
-                        <TouchableOpacity style={styles.socialButton} disabled>
-                            <Ionicons name="logo-google" size={20} color="#DB4437" />
-                            <Text style={styles.socialButtonText}>Google</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.socialButton} disabled>
-                            <Ionicons name="logo-facebook" size={20} color="#4267B2" />
-                            <Text style={styles.socialButtonText}>Facebook</Text>
-                        </TouchableOpacity>
-                    </View>
-
                     <View style={styles.footer}>
                         <Text style={styles.footerText}>Belum punya akun? </Text>
                         <TouchableOpacity onPress={() => router.push('/register')}>
@@ -194,43 +176,6 @@ const styles = StyleSheet.create({
     },
     loginButton: {
         marginBottom: SPACING.lg,
-    },
-    divider: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginVertical: SPACING.lg,
-    },
-    dividerLine: {
-        flex: 1,
-        height: 1,
-        backgroundColor: COLORS.gray[200],
-    },
-    dividerText: {
-        marginHorizontal: SPACING.md,
-        fontSize: FONT_SIZE.sm,
-        color: COLORS.text.secondary,
-    },
-    socialButtons: {
-        flexDirection: 'row',
-        gap: SPACING.md,
-        marginBottom: SPACING.lg,
-    },
-    socialButton: {
-        flex: 1,
-        flexDirection: 'row',
-        gap: SPACING.xs,
-        paddingVertical: SPACING.md,
-        borderWidth: 1,
-        borderColor: COLORS.gray[300],
-        borderRadius: BORDER_RADIUS.lg,
-        alignItems: 'center',
-        justifyContent: 'center',
-        opacity: 0.5,
-    },
-    socialButtonText: {
-        fontSize: FONT_SIZE.sm,
-        fontWeight: '600',
-        color: COLORS.text.primary,
     },
     footer: {
         flexDirection: 'row',
