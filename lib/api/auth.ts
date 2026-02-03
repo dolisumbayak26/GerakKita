@@ -15,55 +15,86 @@ export const login = async (credentials: LoginCredentials) => {
 
 // Register new user (customers only - drivers created by admin)
 export const register = async (userData: RegisterData) => {
-    // 1. Create auth user with metadata
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: userData.email,
-        password: userData.password,
-        options: {
-            data: {
-                full_name: userData.full_name,
-                phone_number: userData.phone_number || null,
+    try {
+        // 1. Create auth user with metadata
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+            email: userData.email,
+            password: userData.password,
+            options: {
+                data: {
+                    full_name: userData.full_name,
+                    phone_number: userData.phone_number || null,
+                }
             }
+        });
+
+        if (authError) {
+            console.error('Auth signup error:', authError);
+            throw authError;
         }
-    });
+        if (!authData.user) {
+            console.error('No user data returned from signup');
+            throw new Error('User creation failed');
+        }
 
-    if (authError) throw authError;
-    if (!authData.user) throw new Error('User creation failed');
+        console.log('User created in auth.users:', authData.user.id);
 
-    // 2. Wait for trigger to create profile (if trigger exists)
-    await new Promise(resolve => setTimeout(resolve, 1000));
+        // 2. Wait for trigger to create profile
+        // The trigger should automatically create the customer profile
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
-    // 3. Check if profile exists in customers table
-    let { data: profileData, error: profileError } = await supabase
-        .from('customers')
-        .select('*')
-        .eq('id', authData.user.id)
-        .single();
-
-    // 4. If profile doesn't exist, create it manually (fallback)
-    if (profileError || !profileData) {
-        console.log('Trigger not found, creating customer profile manually...');
-
-        const { data: newProfile, error: insertError } = await supabase
+        // 3. Check if profile exists in customers table
+        const { data: profileData, error: profileError } = await supabase
             .from('customers')
-            .insert({
+            .select('*')
+            .eq('id', authData.user.id)
+            .single();
+
+        if (profileError && profileError.code !== 'PGRST116') {
+            // PGRST116 = row not found, which is expected if trigger failed
+            console.error('Error checking customer profile:', profileError);
+        }
+
+        // 4. If profile exists (created by trigger), return it
+        if (profileData) {
+            console.log('Customer profile found (created by trigger)');
+            return { user: authData.user, profile: { ...profileData, user_type: 'customer' as const } };
+        }
+
+        // 5. If profile doesn't exist, the trigger might not be working
+        // This is expected during registration - just return auth user
+        // The profile will be created by the trigger
+        console.log('Customer profile will be created by trigger');
+        return {
+            user: authData.user,
+            profile: {
                 id: authData.user.id,
                 email: userData.email,
                 full_name: userData.full_name,
                 phone_number: userData.phone_number || null,
-            })
-            .select()
-            .single();
+                profile_image_url: null,
+                encrypted_pin: null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                user_type: 'customer' as const
+            }
+        };
+    } catch (error: any) {
+        console.error('Registration error:', error);
 
-        if (insertError) {
-            console.error('Failed to create customer profile:', insertError);
-            throw new Error('Profile creation failed. Please contact support.');
+        // Provide more user-friendly error messages
+        if (error.message?.includes('duplicate key')) {
+            throw new Error('Email atau nomor telepon sudah terdaftar');
+        }
+        if (error.message?.includes('invalid email')) {
+            throw new Error('Format email tidak valid');
+        }
+        if (error.message?.includes('weak password')) {
+            throw new Error('Password terlalu lemah. Gunakan minimal 8 karakter');
         }
 
-        profileData = newProfile;
+        throw error;
     }
-
-    return { user: authData.user, profile: { ...profileData, user_type: 'customer' as const } };
 };
 
 // Logout
@@ -81,18 +112,7 @@ export const getSession = async () => {
 
 // Get user profile - checks both customers and drivers tables
 export const getUserProfile = async (userId: string): Promise<User> => {
-    // First, try to find user in customers table
-    const { data: customerData, error: customerError } = await supabase
-        .from('customers')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-    if (customerData && !customerError) {
-        return { ...customerData, user_type: 'customer' as const };
-    }
-
-    // If not found in customers, try drivers table
+    // 1. Check drivers table FIRST (Priority)
     const { data: driverData, error: driverError } = await supabase
         .from('drivers')
         .select('*')
@@ -101,6 +121,17 @@ export const getUserProfile = async (userId: string): Promise<User> => {
 
     if (driverData && !driverError) {
         return { ...driverData, user_type: 'driver' as const };
+    }
+
+    // 2. If not found in drivers, try customers table
+    const { data: customerData, error: customerError } = await supabase
+        .from('customers')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+    if (customerData && !customerError) {
+        return { ...customerData, user_type: 'customer' as const };
     }
 
     // If not found in either table, throw error

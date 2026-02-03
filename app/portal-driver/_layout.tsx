@@ -49,6 +49,13 @@ export default function DriverTabLayout() {
                     tabBarIcon: ({ color }) => <Ionicons size={26} name="person-circle-outline" color={color} />,
                 }}
             />
+            <Tabs.Screen
+                name="select-bus"
+                options={{
+                    href: null, // Hidden from tab bar
+                    tabBarStyle: { display: 'none' }, // Hide tab bar when on this screen
+                }}
+            />
         </Tabs>
     );
 }

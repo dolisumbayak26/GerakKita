@@ -39,7 +39,7 @@ const DESTINATIONS = [
     name: 'Taman Kota Hijau',
     category: 'wisata',
     rating: 4.8,
-    image: 'https://images.unsplash.com/photo-1496417263034-38ec4f0d6b21?q=80&w=600&auto=format&fit=crop',
+    image: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=600&auto=format&fit=crop', // Park
     description: 'Taman kota dengan pepohonan rindang dan danau buatan.',
     nearestStop: 'Halte Pusat Kota'
   },
@@ -48,7 +48,7 @@ const DESTINATIONS = [
     name: 'Grand Mall Plaza',
     category: 'belanja',
     rating: 4.5,
-    image: 'https://images.unsplash.com/photo-1519567241046-7f570eee3d9f?q=80&w=600&auto=format&fit=crop',
+    image: 'https://images.unsplash.com/photo-1567958451986-2de427a4a0be?q=80&w=600&auto=format&fit=crop', // Mall
     description: 'Pusat perbelanjaan terbesar dengan ratusan brand ternama.',
     nearestStop: 'Halte Mall Utara'
   },
@@ -57,7 +57,7 @@ const DESTINATIONS = [
     name: 'Pasar Seni Tradisional',
     category: 'kuliner',
     rating: 4.7,
-    image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?q=80&w=600&auto=format&fit=crop',
+    image: 'https://images.unsplash.com/photo-1533900298318-6b8da08a523e?q=80&w=600&auto=format&fit=crop', // Market
     description: 'Pusat kuliner dan kerajinan tangan lokal.',
     nearestStop: 'Halte Pasar Lama'
   },
@@ -66,7 +66,7 @@ const DESTINATIONS = [
     name: 'Museum Sejarah',
     category: 'wisata',
     rating: 4.6,
-    image: 'https://images.unsplash.com/photo-1566127444979-b3d2b654e3d7?q=80&w=600&auto=format&fit=crop',
+    image: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?q=80&w=600&auto=format&fit=crop', // Museum
     description: 'Jelajahi sejarah kota dari masa lampau.',
     nearestStop: 'Halte Balai Kota'
   }

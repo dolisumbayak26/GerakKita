@@ -24,7 +24,6 @@ export default function MapScreen() {
         destName,
         destAddress
     } = params;
-
     const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
     const [allBusStops, setAllBusStops] = useState<any[]>([]);
 
@@ -93,8 +92,8 @@ export default function MapScreen() {
                 provider={PROVIDER_GOOGLE}
                 style={StyleSheet.absoluteFillObject}
                 initialRegion={{
-                    latitude: userLocation?.coords.latitude || parseFloat(userLat as string) || 3.5952,
-                    longitude: userLocation?.coords.longitude || parseFloat(userLon as string) || 98.6722,
+                    latitude: userLat ? parseFloat(userLat as string) : (userLocation?.coords.latitude || 3.5952),
+                    longitude: userLon ? parseFloat(userLon as string) : (userLocation?.coords.longitude || 98.6722),
                     latitudeDelta: 0.01,
                     longitudeDelta: 0.01,
                 }}
@@ -113,39 +112,45 @@ export default function MapScreen() {
                     </Marker>
                 )}
 
-                {/* All Bus Stops */}
-                {allBusStops.map((stop) => (
-                    <Marker
-                        key={stop.id}
-                        coordinate={{
-                            latitude: parseFloat(stop.latitude),
-                            longitude: parseFloat(stop.longitude)
-                        }}
-                        title={stop.name}
-                        description={stop.address}
-                    >
-                        <View style={[styles.busStopMarker, {
-                            backgroundColor: '#90EE90', // Light green
-                            borderColor: '#FFF'
-                        }]}>
-                            <Ionicons name="bus" size={14} color="#FFF" />
-                        </View>
-                    </Marker>
-                ))}
+                {/* All Bus Stops (Filter out destination to avoid double marker) */}
+                {allBusStops
+                    .filter(stop =>
+                        // Don't render if it's the destination (because we render a special red marker for it below)
+                        !(destLat && destLon &&
+                            Math.abs(parseFloat(stop.latitude) - parseFloat(destLat as string)) < 0.0001 &&
+                            Math.abs(parseFloat(stop.longitude) - parseFloat(destLon as string)) < 0.0001)
+                    )
+                    .map((stop) => (
+                        <Marker
+                            key={stop.id}
+                            coordinate={{
+                                latitude: parseFloat(stop.latitude),
+                                longitude: parseFloat(stop.longitude)
+                            }}
+                            title={stop.name}
+                            description={stop.address}
+                        >
+                            <View style={[styles.busStopMarker, {
+                                backgroundColor: '#90EE90', // Light green
+                                borderColor: '#FFF'
+                            }]}>
+                                <Ionicons name="bus" size={14} color="#FFF" />
+                            </View>
+                        </Marker>
+                    ))}
 
-                {/* Destination Marker */}
-                {destLat && (
+                {/* Destination Marker (Slow Red Pulse) */}
+                {destLat && destLon && (
                     <Marker
                         coordinate={{
                             latitude: parseFloat(destLat as string),
                             longitude: parseFloat(destLon as string)
                         }}
-                        title={destName as string}
-                        description={destAddress as string}
+                        title={destName || 'Tujuan'}
+                        description={destAddress}
+                        pinColor="red" // Fallback
                     >
-                        <View style={[styles.destinationMarker, { backgroundColor: theme.error }]}>
-                            <Ionicons name="location" size={20} color="#FFF" />
-                        </View>
+                        <PulsingMarker size={24} color="red" duration={1000} mode="blink" />
                     </Marker>
                 )}
             </MapView>
@@ -160,9 +165,11 @@ export default function MapScreen() {
 
             {/* Title Card */}
             <SafeAreaView style={[styles.infoCard, { backgroundColor: theme.card }]}>
-                <View>
-                    <Text style={[styles.infoTitle, { color: theme.text }]}>{destName || 'Peta'}</Text>
-                    <Text style={[styles.infoSubtitle, { color: theme.textSecondary }]}>
+                <View style={styles.infoTextContainer}>
+                    <Text style={[styles.infoTitle, { color: theme.text }]} numberOfLines={2}>
+                        {destName || 'Peta'}
+                    </Text>
+                    <Text style={[styles.infoSubtitle, { color: theme.textSecondary }]} numberOfLines={2}>
                         {destAddress || 'Menampilkan lokasi'}
                     </Text>
                 </View>
@@ -264,7 +271,7 @@ const styles = StyleSheet.create({
         bottom: 40,
         left: 20,
         right: 20,
-        padding: 16,
+        padding: 20, // Increased from 16
         borderRadius: 16,
         elevation: 5,
         shadowColor: "#000",
@@ -272,16 +279,20 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 4,
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
     },
+    infoTextContainer: {
+        flex: 1,
+        marginRight: 10,
+        marginLeft: 12, // Increased to 12 as requested
+    },
     infoTitle: {
-        fontSize: 18,
+        fontSize: 16, // Reduced from 18
         fontWeight: 'bold',
         marginBottom: 4,
     },
     infoSubtitle: {
-        fontSize: 14,
+        fontSize: 12, // Reduced from 14
     },
     busStopMarker: {
         padding: 6,
@@ -312,9 +323,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: 12,
-        paddingHorizontal: 20,
+        paddingHorizontal: 16,
         borderRadius: 12,
         gap: 8,
-        marginTop: 12,
     },
 });

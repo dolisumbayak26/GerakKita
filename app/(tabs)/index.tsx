@@ -80,15 +80,28 @@ export default function HomeScreen() {
     fetchRoutes();
     loadAllBusStops();
     (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        setErrorMsg('Permission to access location was denied');
-        return;
-      }
+      try {
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          setErrorMsg('Izin lokasi ditolak. Mohon aktifkan izin lokasi.');
+          return;
+        }
 
-      let location = await Location.getCurrentPositionAsync({});
-      setLocation(location);
-      findNearestStop(location.coords.latitude, location.coords.longitude);
+        // Try to get last known position first for speed
+        let lastKnown = await Location.getLastKnownPositionAsync({});
+        if (lastKnown) {
+          setLocation(lastKnown);
+          findNearestStop(lastKnown.coords.latitude, lastKnown.coords.longitude);
+        }
+
+        // Then get fresh current position
+        let location = await Location.getCurrentPositionAsync({});
+        setLocation(location);
+        findNearestStop(location.coords.latitude, location.coords.longitude);
+      } catch (error) {
+        console.log('Error getting location:', error);
+        setErrorMsg('Gagal mengambil lokasi. Pastikan GPS aktif.');
+      }
     })();
   }, []);
 
@@ -301,7 +314,6 @@ export default function HomeScreen() {
                   }}
                   scrollEnabled={false}
                   zoomEnabled={false}
-                  onPress={handleOpenMap} // Ensure map clicks also trigger it
                 >
                   {/* User Location Marker with Pulse */}
                   {location && (
@@ -342,12 +354,14 @@ export default function HomeScreen() {
             <View style={styles.nearbyInfo}>
               <View>
                 <Text style={[styles.stopName, { color: theme.text }]}>
-                  {nearestStop ? nearestStop.name : 'Mencari halte terdekat...'}
+                  {errorMsg ? 'Gagal memuat lokasi' : (nearestStop ? nearestStop.name : 'Mencari halte terdekat...')}
                 </Text>
                 <Text style={[styles.stopDistance, { color: theme.textSecondary }]}>
-                  {nearestStop
-                    ? `${nearestStop.distance}m • Jalan kaki ${~~(nearestStop.distance / 1.4 / 60)} menit`
-                    : 'Mohon aktifkan lokasi'}
+                  {errorMsg
+                    ? errorMsg
+                    : (nearestStop
+                      ? `${nearestStop.distance}m • Jalan kaki ${~~(nearestStop.distance / 1.4 / 60)} menit`
+                      : 'Sedang memindai lokasi...')}
                 </Text>
               </View>
               <TouchableOpacity
@@ -394,6 +408,7 @@ export default function HomeScreen() {
         </View>
 
         <View style={{ height: 20 }} />
+
       </ScrollView>
     </SafeAreaView>
   );
